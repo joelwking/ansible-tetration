@@ -1,0 +1,158 @@
+#!/usr/bin/ansible-playbook
+---
+#
+#      setup_tetration_sensor.yml
+#
+#      Copyright (c) 2018 World Wide Technology, Inc.
+#      All rights reserved.
+#
+#      author: joel.king@wwt.com
+#
+#      usage:  ./setup_tetration_sensor.yml  -e "PASSWORDS_DIR=$HOME/ansible/playbooks"
+#
+#      notes:
+#              Linux verson: CentOS-7-x86_64-Everything-1804.iso
+#              # - "{{ lookup('env','PASSWORDS_DIR') }}/passwords.yml"
+#
+#              # For human-readable output modify ansible.cfg statement stdout_callback = debug
+#
+#      reference:
+#          Cisco Tetration Analytics Installation Guide  for the Software Agent
+#          https://www.cisco.com/c/dam/en/us/td/docs/data-center-analytics/tetration-analytics/sw/install/cta_install_guide_for_software_sensor_agents.pdf
+#
+#
+- name: Installs Tetration software agent
+  hosts: TETRATION
+  no_log: False
+  gather_facts: True
+
+  vars_files:
+    - "{{ PASSWORDS_DIR }}/passwords.yml"
+
+  vars:
+    students: 1
+
+    download:
+      dest_dir: "/tmp/tetration/"
+      images:
+        - {server: "ftp://{{ ftp.username }}:{{ ftp.password }}@10.255.40.101/SDN/images/tetration/", fn: "tet-sensor-2.3.1.41-1.el7-atctetration01.enforcer.x86_64.rpm"}
+
+    commands:
+      check:
+        - cat /etc/centos-release
+        - uname -r
+        - cat /etc/shells
+        - rpm --showrc | grep 'rpmlib(CompressedFileNames)'
+        - rpm --showrc | grep 'rpmlib(PayloadFilesHavePrefix)'
+        - rpm --showrc | grep rpmlib
+        - curl -V
+        - dmidecode -V
+        - openssl version -a
+        - cpio --version
+        - sed --version
+        - awk --version
+        - flock -V
+        - rpm -qa | grep lsb
+        - yum provides */lsb_release
+        - rpm -qa | grep libpcap
+
+      verification:
+        - service tet-sensor status
+        - service tet-enforcer status
+        - ps aux | grep tet
+        - rpm -qa | grep tet
+
+    packages:
+      apt:
+          - git
+      pip:
+          - tetpyclient                         #  Python API Client for Tetration Analytics
+      yum:
+          - git                                 # Git for Training
+          - python-pip                          # Pip not installed on CentOS by default
+          - epel-release                        # Required to download the latest Ansible
+          - ansible                             # Ansible for Training
+          - redhat-lsb-core                     # Pre-req for the Tetraton software sensor
+
+  tasks:
+
+    - name: Setup determines package manager and distribution
+      debug:
+        msg:  "Package manager:{{ ansible_pkg_mgr }} Distro:{{ ansible_distribution }}"           # 'apt' or 'yum', 'CentOS', 'Ubuntu', etc.
+
+    #
+    #  CentOS
+    #
+    - name: Install Tetration software sensor
+      block:
+
+        # For human-readable output modify ansible.cfg statement stdout_callback = debug
+        # and excute with -v
+        - name: Optionally issue commands for pre-install check
+          shell: "{{ item }}"
+          with_items: "{{ commands.check }}"
+          register: check
+        #  if needed {{ check.results}} is a list of each command, containing  "{{ item.cmd }} {{ item.stdout }}"
+
+        - name: Create a directory for the file(s)
+          file:
+            path: "{{ download.dest_dir }}" 
+            owner: "{{ ansible_user_id }}"
+            group: "{{ ansible_user_id }}"
+            state: directory
+            mode: 0755
+          become: true
+
+        - name: Download files / to install on the server
+          get_url:
+            url: "{{ item.server }}{{ item.fn }}"
+            dest: "{{ download.dest_dir }}{{ item.fn }}"
+          with_items:  "{{ download.images }}"
+
+        - name: Install the yum packages
+          yum:
+            name: "{{ item }}"
+            state: latest
+          with_items:  "{{ packages.yum }}"
+
+        - name: Install Tetration (using yum)
+          yum:
+            name: "{{ download.dest_dir }}{{ item.fn }}"
+          with_items:  "{{ download.images }}"
+
+        - name: Upgrade all packages
+          yum:
+            name: '*'
+            state: latest
+
+        # For human-readable output modify ansible.cfg statement stdout_callback = debug
+        # and excute with -v
+        - name: Issue commands for post-install check
+          shell: "{{ item }}"
+          with_items: "{{ commands.verification }}"
+
+      when: ansible_pkg_mgr == 'yum'
+      become: true
+      become_user: root
+
+    #
+    # Python
+    #
+    - name: Common Python packages
+      block:
+        - name: Install the python packages
+          pip:
+            name: "{{ item }}"
+            state: latest
+            use_mirrors: no
+          with_items: "{{ packages.pip }}"
+
+    #
+    #  Create student user accounts
+    #
+    - include_role:
+        name: create_user
+      vars:
+          class_size: "{{ students }}"
+      when: students > 0
+      tags: create_user

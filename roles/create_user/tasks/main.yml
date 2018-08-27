@@ -1,0 +1,12 @@
+---
+# tasks file for create_user
+
+    - name: Optionally create user accounts
+      user: 
+        name: "{{ base_name }}{{ item }}"
+        comment: "{{ comment }}"
+        password: "{{ linux.password.encrypted }}"
+        shell: "{{ shell }}"
+        state: "{{ state }}"
+        remove: "{{ remove[state] }}"
+      with_sequence: count={{ class_size }}

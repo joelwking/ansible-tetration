@@ -1,0 +1,11 @@
+---
+# vars file for create_user
+
+    class_size: 0
+    comment: CSE training 
+    base_name: student
+    state: present
+    shell: /bin/bash
+    remove:
+      present: no
+      absent: yes
