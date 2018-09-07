@@ -1,0 +1,535 @@
+/*
+ * Copyright 2017 Cisco Systems, Inc.
+ * Cisco Tetration
+ *
+ * Protobuf declaration of Tetration Network Policy's data structures
+ * published to Kafka.
+ */
+
+syntax = "proto3";
+
+package TetrationNetworkPolicyProto;
+
+// package name where the java class should reside
+option java_package = "com.tetration.tetration_network_policy.proto";
+option java_outer_classname = "TetrationNetworkPolicyProto";
+
+enum IPAddressFamily {
+  INVALID = 0;
+  IPv4 = 1;
+  IPv6 = 2;
+};
+
+// IP address with prefix.
+message AddressWithPrefix {
+  // IP Address in Network Byte Order.
+  bytes ip_addr = 1;
+
+  uint32 prefix_length = 2;
+
+  // Address family
+  IPAddressFamily addr_family = 3;
+}
+
+// Message to represent a contiguous range of IP Addresses.
+message AddressWithRange {
+  // Start IP Address in Network Byte Order.
+  bytes start_ip_addr = 1;
+
+  // End IP Address in Network Byte Order. End IP Address must be greater than
+  // start IP Address.
+  bytes end_ip_addr = 2;
+
+  // Address family
+  IPAddressFamily addr_family = 3;
+}
+
+// When we enforce on Load Balancer devices we will expose VIPs, URLs and
+// service names as members of InventoryFilter. Note that an InventoryFilter
+// with members of LBService can be used only as provider_filter_id in
+// FlowFilter.
+message LBService {
+  oneof ServiceName {
+    // Virtual IP used by clients to reach the service behind load balancers.
+    AddressWithPrefix vip = 1;
+
+    // URL used by clients to reach service behind load balancers.
+    string url = 2;
+
+    // Service name if a non-standard mechanism is used for service discovery.
+    string name = 3;
+  }
+}
+
+message KeyValue {
+  string key = 1;
+  string value = 2;
+}
+
+// An inventory item specifies cluster entities such as servers, appliances.
+// It can be either a singular IP address, a subnet or an address range.
+message InventoryItem {
+  oneof address {
+    AddressWithPrefix ip_address = 1;
+
+    AddressWithRange address_range = 2;
+
+    LBService lb_service = 4;
+  }
+
+}
+
+// Inventory filter represents a grouping of inventory items. They will be
+// referenced by Flow Filters.
+message InventoryFilter {
+  // Unique identifier assigned to inventory filter. Flow filters will refer
+  // to these values. If a given update has multiple InventoryFilter messages
+  // with the same id then the clients will merge inventory_items to construct
+  // the complete inventory filter.
+  string id = 1;
+
+  repeated InventoryItem inventory_items = 2;
+
+  // Query filter json representation. It enables us to identify the common
+  // attributes of inventory_items that group them together.
+  string query = 3;
+}
+
+enum IPProtocol {
+  IP = 0;
+  ICMP = 1;
+  IGMP = 2;
+  GGP = 3;
+  IPIP = 4;
+  ST = 5;
+  TCP = 6;
+  CBT = 7;
+  EGP = 8;
+  IGP = 9;
+  BBNRCC = 10;
+  NVP = 11;
+  PUP = 12;
+  ARGUS = 13;
+  EMCON = 14;
+  XNET = 15;
+  CHAOS = 16;
+  UDP = 17;
+  MUX = 18;
+  DCNMEAS = 19;
+  HMP = 20;
+  PRM = 21;
+  IDP = 22;
+  TRUNK1 = 23;
+  TRUNK2 = 24;
+  LEAF1 = 25;
+  LEAF2 = 26;
+  RDP = 27;
+  IRTP = 28;
+  TP = 29;
+  NETBLT = 30;
+  MFPNSP = 31;
+  MERITINP = 32;
+  SEP = 33;
+  _3PC = 34;
+  IDPR = 35;
+  XTP = 36;
+  DDP = 37;
+  CMTP = 38;
+  TPPP = 39;
+  IL = 40;
+  IP6 = 41;
+  SDRP = 42;
+  ROUTING = 43;
+  FRAGMENT = 44;
+  RSVP = 46;
+  GRE = 47;
+  MHRP = 48;
+  ENA = 49;
+  ESP = 50;
+  AH = 51;
+  INLSP = 52;
+  SWIPE = 53;
+  NARP = 54;
+  MOBILE = 55;
+  TLSP = 56;
+  SKIP = 57;
+  ICMP6 = 58;
+  NONE = 59;
+  DSTOPTS = 60;
+  ANYHOST = 61;
+  CFTP = 62;
+  ANYNET = 63;
+  EXPAK = 64;
+  KRYPTOLAN = 65;
+  RVD = 66;
+  IPPC = 67;
+  DISTFS = 68;
+  SATMON = 69;
+  VISA = 70;
+  IPCV = 71;
+  CPNX = 72;
+  CPHB = 73;
+  WSN = 74;
+  PVP = 75;
+  BRSATMON = 76;
+  SUNND = 77;
+  WBMON = 78;
+  WBEXPAK = 79;
+  EON = 80;
+  VMTP = 81;
+  SVMTP = 82;
+  VINES = 83;
+  TTP = 84;
+  NSFIGP = 85;
+  DGP = 86;
+  TCF = 87;
+  EIGRP = 88;
+  OSPF = 89;
+  SPRITERPC = 90;
+  LARP = 91;
+  MTP = 92;
+  AX25 = 93;
+  IPIPENCAP = 94;
+  MICP = 95;
+  SCCSP = 96;
+  ETHERIP = 97;
+  ENCAP = 98;
+  ANYENC = 99;
+  GMTP = 100;
+  IFMP = 101;
+  PNNI = 102;
+  PIM = 103;
+  ARIS = 104;
+  SCPS = 105;
+  QNX = 106;
+  AN = 107;
+  IPCOMP = 108;
+  SNP = 109;
+  COMPAQPEER = 110;
+  IPXIP = 111;
+  VRRP = 112;
+  PGM = 113;
+  ANY0HOP = 114;
+  L2TP = 115;
+  DDX = 116;
+  IATP = 117;
+  STP = 118;
+  SRP = 119;
+  UTI = 120;
+  SMP = 121;
+  SM = 122;
+  PTP = 123;
+  ISIS = 124;
+  FIRE = 125;
+  CRTP = 126;
+  CRUDP = 127;
+  SSCOPMCE = 128;
+  IPLT = 129;
+  SPS = 130;
+  PIPE = 131;
+  SCTP = 132;
+  FC = 133;
+  RSVPIGN = 134;
+  MOBILITYHEADER = 135;
+  UDPLITE = 136;
+  MPLSINIP = 137;
+  MANET = 138;
+  HIP = 139;
+  SHIM6 = 140;
+  WESP = 141;
+  ROHC = 142;
+  UNASSIGNED143 = 143;
+  UNASSIGNED144 = 144;
+  UNASSIGNED145 = 145;
+  UNASSIGNED146 = 146;
+  UNASSIGNED147 = 147;
+  UNASSIGNED148 = 148;
+  UNASSIGNED149 = 149;
+  UNASSIGNED150 = 150;
+  UNASSIGNED151 = 151;
+  UNASSIGNED152 = 152;
+  UNASSIGNED153 = 153;
+  UNASSIGNED154 = 154;
+  UNASSIGNED155 = 155;
+  UNASSIGNED156 = 156;
+  UNASSIGNED157 = 157;
+  UNASSIGNED158 = 158;
+  UNASSIGNED159 = 159;
+  UNASSIGNED160 = 160;
+  UNASSIGNED161 = 161;
+  UNASSIGNED162 = 162;
+  UNASSIGNED163 = 163;
+  UNASSIGNED164 = 164;
+  UNASSIGNED165 = 165;
+  UNASSIGNED166 = 166;
+  UNASSIGNED167 = 167;
+  UNASSIGNED168 = 168;
+  UNASSIGNED169 = 169;
+  UNASSIGNED170 = 170;
+  UNASSIGNED171 = 171;
+  UNASSIGNED172 = 172;
+  UNASSIGNED173 = 173;
+  UNASSIGNED174 = 174;
+  UNASSIGNED175 = 175;
+  UNASSIGNED176 = 176;
+  UNASSIGNED177 = 177;
+  UNASSIGNED178 = 178;
+  UNASSIGNED179 = 179;
+  UNASSIGNED180 = 180;
+  UNASSIGNED181 = 181;
+  UNASSIGNED182 = 182;
+  UNASSIGNED183 = 183;
+  UNASSIGNED184 = 184;
+  UNASSIGNED185 = 185;
+  UNASSIGNED186 = 186;
+  UNASSIGNED187 = 187;
+  UNASSIGNED188 = 188;
+  UNASSIGNED189 = 189;
+  UNASSIGNED190 = 190;
+  UNASSIGNED191 = 191;
+  UNASSIGNED192 = 192;
+  UNASSIGNED193 = 193;
+  UNASSIGNED194 = 194;
+  UNASSIGNED195 = 195;
+  UNASSIGNED196 = 196;
+  UNASSIGNED197 = 197;
+  UNASSIGNED198 = 198;
+  UNASSIGNED199 = 199;
+  UNASSIGNED200 = 200;
+  UNASSIGNED201 = 201;
+  UNASSIGNED202 = 202;
+  UNASSIGNED203 = 203;
+  UNASSIGNED204 = 204;
+  UNASSIGNED205 = 205;
+  UNASSIGNED206 = 206;
+  UNASSIGNED207 = 207;
+  UNASSIGNED208 = 208;
+  UNASSIGNED209 = 209;
+  UNASSIGNED210 = 210;
+  UNASSIGNED211 = 211;
+  UNASSIGNED212 = 212;
+  UNASSIGNED213 = 213;
+  UNASSIGNED214 = 214;
+  UNASSIGNED215 = 215;
+  UNASSIGNED216 = 216;
+  UNASSIGNED217 = 217;
+  UNASSIGNED218 = 218;
+  UNASSIGNED219 = 219;
+  UNASSIGNED220 = 220;
+  UNASSIGNED221 = 221;
+  UNASSIGNED222 = 222;
+  UNASSIGNED223 = 223;
+  UNASSIGNED224 = 224;
+  UNASSIGNED225 = 225;
+  UNASSIGNED226 = 226;
+  UNASSIGNED227 = 227;
+  UNASSIGNED228 = 228;
+  UNASSIGNED229 = 229;
+  UNASSIGNED230 = 230;
+  UNASSIGNED231 = 231;
+  UNASSIGNED232 = 232;
+  UNASSIGNED233 = 233;
+  UNASSIGNED234 = 234;
+  UNASSIGNED235 = 235;
+  UNASSIGNED236 = 236;
+  UNASSIGNED237 = 237;
+  UNASSIGNED238 = 238;
+  UNASSIGNED239 = 239;
+  UNASSIGNED240 = 240;
+  UNASSIGNED241 = 241;
+  UNASSIGNED242 = 242;
+  UNASSIGNED243 = 243;
+  UNASSIGNED244 = 244;
+  UNASSIGNED245 = 245;
+  UNASSIGNED246 = 246;
+  ARP_REVREQUEST = 247;
+  ARP_REVREPLY = 248;
+  ARP_REQUEST = 249;
+  ARP_REPLY = 250;
+  UNASSIGNED251 = 251;
+  UNASSIGNED252 = 252;
+  EXPERIMENT1 = 253;
+  EXPERIMENT2 = 254;
+  RESERVED = 255;
+}
+
+// Used to represent contiguous port numbers.
+message PortRange {
+  uint32 start_port = 1;
+
+  uint32 end_port = 2;
+}
+
+message ProtocolAndPorts {
+  IPProtocol protocol = 1;
+
+  repeated PortRange port_ranges = 2;
+
+  repeated uint32 ports = 3;
+}
+
+// Defines the match criteria for Intents.
+message FlowFilter {
+  // Unique id assigned to this FlowFilter.
+  string id = 1 [deprecated=true];
+
+  // Id of inventory filter corresponding to consumers of a service.
+  string consumer_filter_id = 2;
+
+  // Id of inventory filter corresponding to providers of a service.
+  string provider_filter_id = 3;
+
+  // List of ports and protocols where the service is accessible.
+  repeated ProtocolAndPorts protocol_and_ports = 4;
+
+  /* If set, this will reference to the consumer_filter object
+   * referenced by consumer_filter_id
+   */
+  InventoryFilter consumer_filter = 100 [deprecated=true];
+
+  /* If set, this will reference to the provider_filter object
+   * referenced by provider_filter_id
+   */
+  InventoryFilter provider_filter = 101 [deprecated=true];
+}
+
+// Contains debug information from Tetration.
+message IntentMetaData {
+  // The intent due to which this policy exists.
+  string intent_id = 1;
+
+  string hash_id = 2;
+
+  // The workspace due to which this policy exists.
+  string workspace_id = 3;
+
+  // Fields to help trace the ADM related constructs that is responsible for
+  // creating this intent.
+  string adm_data_set_id = 4;
+  string adm_data_set_version = 5;
+  string policy_intent_group_id = 6;
+  string cluster_edge_id = 7;
+}
+
+message Intent {
+  // Unique id assigned to this Intent.
+  string id = 1;
+
+  FlowFilter flow_filter = 2;
+  enum Action {
+    INVALID = 0;
+    // Allow the corresponding flows.
+    ALLOW = 1;
+    // DROP the corresponding flows.
+    DROP = 2;
+  };
+
+  // Action to be taken for corresponding flows.
+  Action action = 3;
+
+  // Identifies the enforcement point of the intent.
+  enum TargetDevice {
+    // Inside VM, Bare-metal or containers.
+    WORKLOAD = 0;
+    // In network using SDN tools like ACI.
+    NETWORK_FABRIC = 1;
+    // Load balancers and NAT devices that support enforcement.
+    MIDDLE_BOXES = 2;
+    // Firewalls
+    FIREWALLS = 3;
+  };
+
+  // List of traget devices where we want the intent to be enforced.
+  repeated TargetDevice target_devices = 4;
+
+  // Any tags defined in Tetration for a specific intent will be provided here.
+  repeated KeyValue tags = 5;
+
+  // Tetration debug information. Can be used to link back to Applications and
+  // workspaces using either UI or OPenAPI
+  IntentMetaData meta_data = 6;
+
+  /* The following two fields construct a double linked list of intents, and
+   * the sequence of the entire intents list represents the intents priority
+   * in decreasing order.
+   * Note that those fields are not set by backend, but by tnp-client only as
+   * a result of its delta computation.
+   */
+  string previous_intent_id = 100 [deprecated=true];
+  string next_intent_id = 101 [deprecated=true];
+}
+
+// CatchAll policy action.
+message CatchAllPolicy {
+  enum Action {
+    INVALID = 0;
+    // Allow the corresponding flows.
+    ALLOW = 1;
+    // DROP the corresponding flows.
+    DROP = 2;
+  };
+  Action action = 1;
+}
+
+message NetworkPolicy {
+  // Fully expanded inventory filters.
+  repeated InventoryFilter inventory_filters = 1;
+
+  // Order of intents in decreasing order of priority.
+  repeated Intent intents = 2;
+
+  // Catch All policy.
+  CatchAllPolicy catch_all = 3;
+}
+
+message TenantNetworkPolicy {
+  // Unique name assigned to tenant. It's the same as the root-scope name.
+  string tenant_name = 1;
+
+  // Network policy corresponding to tenant_name. Note that policy for one
+  // tenant might be split across several TenantNetworkPolicy messages. To
+  // reconstruct the policy state we need to append NetworkPolicy from multiple
+  // messages in the same order of TenantNetworkPolicy.
+  repeated NetworkPolicy network_policy = 2;
+}
+
+// The network policy updates we send over Kafka can be large; over a couple of
+// GB each. Given that it is recommended to keep individual Kafka messages under
+// 10MB we split each policy update into several smaller Kafka messages. To
+// enable clients to correctly reconstruct the state and handle error scenarios
+// we wrap each Kafka message under KafkaUpdate proto. Every policy update will
+// have a begin marker UPDATE_START and end marker UPDATE_END.
+// To reiterate every Policy update will have following set of messages:
+//           - UPDATE_START indicates a new policy update begins.
+//           - Several UPDATE messages with increasing sequence numbers.
+//           - UPDATE_END indicates the new policy update is complete.
+// Note that the first message's (UPDATE_START) sequence number is zero and
+// subsequent message's sequence numbers are strictly incremented by one.
+// A client reading these updates should read all the messages from UPDATE_START
+// to UPDATE_END. If any message is missing then client should skip all the
+// messages until the next UPDATE_START message.
+message KafkaUpdate {
+  enum UpdateType {
+    // Start marker for a new policy update.
+    UPDATE_START = 0;
+    // Message part of the policy update.
+    UPDATE = 1;
+    // End marker for the current policy update.
+    UPDATE_END = 2;
+  };
+
+  // Type of update message.
+  UpdateType type = 1;
+
+  // Sequence number, starting with zero, is incremented by 1 for each
+  // message that is part of a policy update.
+  uint32 sequence_num = 2;
+
+  // Partial details of the network policy. For Intents that are part of
+  // different KafkaUpdate messages: the Intents in earlier message have higher
+  // priority than intents in later messages.
+  TenantNetworkPolicy tenant_network_policy = 3;
+
+  // Monotonically increasing version number of policy state.
+  uint64 version = 4;
+}
