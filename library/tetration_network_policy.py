@@ -64,6 +64,8 @@ import ssl
 #
 
 # export PYTHONPATH="/usr/share/ansible:$HOME/protobufs/protobuf-3.6.1/python"
+sys.path.append('/home/administrator/tetration/ansible-tetration/library')
+sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
 import tetration_network_policy_pb2
 #
 #
@@ -77,7 +79,7 @@ def set_arguments():
     """
     THIS IS Temporary, only used for development
     """
-    return dict(certs='/ansible-tetration/files/certificates/producer-tnp-2.cert/',
+    return dict(certs='/home/administrator/tetration/ansible-tetration/files/certificates/producer-tnp-2.cert/',
                 broker='10.253.239.14:9093', # kafkaBrokerIps.txt - IP address/portthat Kafka Client should use
                 topic='Tnp-2')               # topic - file contains the topic this client can read the messages from.
                                              # Topics are of the format topic-<root_scope_id>
@@ -124,16 +126,62 @@ def create_consumer(args):
                               ssl_context= create_ssl_context(args.get('certs'))
                             )           
 
+def get_message(args)
+
+
+
 def main():
     """
+    update.IsInitialized()
+    update.ListFields()
+
     """
     args = set_arguments()
     consumer = create_consumer(args)
     debug(consumer, args)
 
+    msg_store = []
     for message in consumer:
         print "%s:%d:%d key=%s len of value=%s" % (message.topic, message.partition, message.offset, message.key, len(message.value))
-        break
+        msg_store.append(message.value)
+
+    print len(msg_store)
+    update = tetration_network_policy_pb2.KafkaUpdate()
+    
+    update.ParseFromString(message.value)
+    
+    for item in update.tenant_network_policy.network_policy:
+        print "Catch_all: %s" % item.catch_all.action
+        for intent in item.intents:
+            print "Intent_id: %s" % intent.meta_data.intent_id
+            for proto in intent.flow_filter.protocol_and_ports:
+                print "protocol:%s ports:%s" % (proto.protocol, proto.ports)
+
+
 
 if __name__ == '__main__':
     main()
+
+"""
+Tnp-2:0:145343 key=2 len of value=8
+
+update = tetration_network_policy_pb2.KafkaUpdate()
+len(msg_store)
+11202
+update.ParseFromString(msg_store[11201])
+
+update
+type: UPDATE_END
+sequence_num: 1
+version: 72672
+
+update.type
+2
+
+update.UPDATE_END is the value of '2'
+
+update.UPDATE has the value of '1'
+
+update.type == 0 for data records.
+
+"""
