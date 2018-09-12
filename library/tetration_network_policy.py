@@ -55,25 +55,40 @@
     linter: flake8
 """
 #
-#  
+#  System Imports
+#
+import ssl
+import sys
+#
+#  Application Imports
 #
 from kafka import KafkaConsumer
-import ssl
 #
-#  Protocol Buffers
+#  Protocol Buffer Imports  (User compliled, source is Tetration documentation)
 #
-
-# export PYTHONPATH="/usr/share/ansible:$HOME/protobufs/protobuf-3.6.1/python"
 sys.path.append('/home/administrator/tetration/ansible-tetration/library')
 sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
 import tetration_network_policy_pb2
 #
+# Constants
 #
-#
-TETRATION_VERSION = '2.3.1.49'
-API_VERSION = (0,9)
-KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'        # This file contain the KafkaConsumer certificate.
-KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key' # This file contains the Private Key for the Kafka Consumer.
+DEBUG = True
+TETRATION_VERSION = '2.3.1.49'                             # Program tested with this version of Tetration
+API_VERSION = (0,9)                                        # Required by KafkaConsumer, a guess based on the documentation
+KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
+KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
+
+
+class PolicySet(object):
+    """
+    Container for all messages that comprise a Policy
+    """
+    def __init__(self):
+        """
+        """
+        self.buffers = []                                # Create an empty list to hold all buffers
+        self.ending_offset_value = None                  # The message offset for the UPDATE_END record
+
 
 def set_arguments():
     """
@@ -84,17 +99,12 @@ def set_arguments():
                 topic='Tnp-2')               # topic - file contains the topic this client can read the messages from.
                                              # Topics are of the format topic-<root_scope_id>
    
-def debug(consumer, args):
+def debug(msg):
     """
+    The debug switch should only be enabled when executing outside Ansible.
     """
-    topic = args.get('topic')
-    print "All the topics available {}".format(consumer.topics())
-    print "Subscription {}".format(consumer.subscription())
-    print "Partitions for topic {}".format(consumer.partitions_for_topic(topic))
-    print "TopicPartitions {}".format(consumer.assignment())
-    print "Beginning offsets {}".format(consumer.beginning_offsets(consumer.assignment()))
-    print "End offsets {}".format(consumer.end_offsets(consumer.assignment()))
-
+    if DEBUG:
+        print msg
 
 def create_ssl_context(cert_dir):
     """
@@ -102,7 +112,7 @@ def create_ssl_context(cert_dir):
     KafkaConsumer provides a means to provide our own SSL context, enabling
     CERT_NONE, no certificates from the server are required (or looked at if provided))
 
-    https://<tetration>/documentation/ui/lab/managed_datatap.html?highlight=kafkaconsumerca
+    https://<tetration>/documentation/ui/lab/managed_datatap.html
 
     :return: ssl context 
     """
@@ -116,72 +126,113 @@ def create_ssl_context(cert_dir):
 def create_consumer(args):
     """
     """
-    return KafkaConsumer(args.get('topic'),             
+    consumer =  KafkaConsumer(args.get('topic'),             
                               api_version=API_VERSION,
                               bootstrap_servers=args.get('broker'), 
                               auto_offset_reset='earliest',           # consume earliest available messages,
                               enable_auto_commit=False,               # don't commit offsets
                               consumer_timeout_ms=1000,               # StopIteration if no message after 1 secone
-                              security_protocol='SSL',
+                              security_protocol='SSL',                # must be capitalized
                               ssl_context= create_ssl_context(args.get('certs'))
-                            )           
+                            )    
 
-def get_message(args)
+    debug("All the topics available :{}".format(consumer.topics()))
+    debug("Subscription:{}".format(consumer.subscription()))
+    debug("Partitions for topic:{}".format(consumer.partitions_for_topic(args.get('topic'))))
+    debug("TopicPartitions:{}".format(consumer.assignment()))
+    debug("Beginning offsets:{}".format(consumer.beginning_offsets(consumer.assignment())))
+    debug("End offsets:{}\n".format(consumer.end_offsets(consumer.assignment())))
 
+    return consumer
 
-
-def main():
+def get_policy_update(args):
     """
-    update.IsInitialized()
-    update.ListFields()
+        Refer to the documentation at: https://<tetration>/documentation/ui/adm/policies.html
 
+            // The network policy updates we send over Kafka can be large; over a couple of
+            // GB each. Given that it is recommended to keep individual Kafka messages under
+            // 10MB we split each policy update into several smaller Kafka messages. To
+            // enable clients to correctly reconstruct the state and handle error scenarios
+            // we wrap each Kafka message under KafkaUpdate proto. Every policy update will
+            // have a begin marker UPDATE_START and end marker UPDATE_END.
+            // To reiterate every Policy update will have following set of messages:
+            //           - UPDATE_START indicates a new policy update begins.
+            //           - Several UPDATE messages with increasing sequence numbers.
+            //           - UPDATE_END indicates the new policy update is complete.
+            // Note that the first message's (UPDATE_START) sequence number is zero and
+            // subsequent message's sequence numbers are strictly incremented by one.
+            // A client reading these updates should read all the messages from UPDATE_START
+            // to UPDATE_END. If any message is missing then client should skip all the
+            // messages until the next UPDATE_START message.
+            
+        Notes:
+            # if len(message.value) == 8:                  # End records are observed to have a length of 8 bytes
     """
-    args = set_arguments()
-    consumer = create_consumer(args)
-    debug(consumer, args)
 
-    msg_store = []
-    for message in consumer:
-        print "%s:%d:%d key=%s len of value=%s" % (message.topic, message.partition, message.offset, message.key, len(message.value))
-        msg_store.append(message.value)
+    input_data = create_consumer(args)                     # Attach to the message bus, this is our INPUT data
+    policy = PolicySet()                                   # Object to hold Network Policy for processing
+    found_start = False                                    # skip all the messages until the next UPDATE_START message.
 
-    print len(msg_store)
-    update = tetration_network_policy_pb2.KafkaUpdate()
-    
-    update.ParseFromString(message.value)
-    
-    for item in update.tenant_network_policy.network_policy:
+    for count, message in enumerate(input_data):
+        # Kafka messages are comprised of a topic, partition, offset, key and value
+        # the key has always been a value of 2
+        # debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)))
+
+        protobuf = tetration_network_policy_pb2.KafkaUpdate() # Create object for Tetration Network Policy
+        protobuf.ParseFromString(message.value)               # Load the message value into the protocol buffer
+
+        if protobuf.type == protobuf.UPDATE:
+            raise ValueError("Encountered UPDATE record at message offset:{}, logic not implemented".format(message.offset))
+
+        if protobuf.type == protobuf.UPDATE_END and found_start:
+            policy.ending_offset_value = message.offset
+            debug("Found UPDATE_END at message offset:{}".format(message.offset))
+            break
+
+        if protobuf.type == protobuf.UPDATE_START:
+            found_start = True
+            debug("Found UPDATE_START at message offset:{}".format(message.offset))
+
+        if found_start:
+            policy.buffers.append(protobuf)
+            continue
+        else:
+            debug("Skipping message offset:{}".format(message.offset))
+            continue
+
+        # Any types other than 0,1,2 are unexpected
+        raise ValueError("Unknown type:{} at message offset:{}".format(protobuf.type, message.offset))
+
+    return policy
+
+def decode_policy(policy):
+    """
+    :param policy: 
+    :return: 
+    """
+    for item in policy.tenant_network_policy.network_policy:
         print "Catch_all: %s" % item.catch_all.action
         for intent in item.intents:
             print "Intent_id: %s" % intent.meta_data.intent_id
             for proto in intent.flow_filter.protocol_and_ports:
-                print "protocol:%s ports:%s" % (proto.protocol, proto.ports)
+                print "protocol:%s port_ranges: %s" % (proto.protocol, proto.port_ranges)
+                kkk = proto.port_ranges
+    return
 
-
+def main():
+    """
+    """
+    args = set_arguments()                                 # Get arguments into the program
+    network_policy = get_policy_update(args)               # Returned is discrete network policy, one unit of policy
+    for policy in network_policy.buffers:
+        decode_policy(policy)
+    debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
+    return
 
 if __name__ == '__main__':
+    
+    ####
+    import pydevd
+    pydevd.settrace('192.168.56.1', stdoutToServer=True, stderrToServer=True)
+    ####
     main()
-
-"""
-Tnp-2:0:145343 key=2 len of value=8
-
-update = tetration_network_policy_pb2.KafkaUpdate()
-len(msg_store)
-11202
-update.ParseFromString(msg_store[11201])
-
-update
-type: UPDATE_END
-sequence_num: 1
-version: 72672
-
-update.type
-2
-
-update.UPDATE_END is the value of '2'
-
-update.UPDATE has the value of '1'
-
-update.type == 0 for data records.
-
-"""
