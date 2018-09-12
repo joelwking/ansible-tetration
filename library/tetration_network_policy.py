@@ -32,6 +32,7 @@
           
         Google Protocol Buffers
           https://developers.google.com/protocol-buffers/docs/pythontutorial
+          https://developers.google.com/protocol-buffers/docs/reference/python/google.protobuf.message.Message-class
         
         Tetration
           https://10.253.239.4/documentation/ui/adm/policies.html?highlight=kafka#policies-publisher
@@ -173,35 +174,43 @@ def get_policy_update(args):
     policy = PolicySet()                                   # Object to hold Network Policy for processing
     found_start = False                                    # skip all the messages until the next UPDATE_START message.
 
+    protobuf = tetration_network_policy_pb2.KafkaUpdate()  # Create object for Tetration Network Policy
+    tmp_pbuf = tetration_network_policy_pb2.KafkaUpdate()  # work area for decoding what type
+
     for count, message in enumerate(input_data):
         # Kafka messages are comprised of a topic, partition, offset, key and value
-        # the key has always been a value of 2
+        # In testing, the key is always a value of 2
         # debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)))
 
-        protobuf = tetration_network_policy_pb2.KafkaUpdate() # Create object for Tetration Network Policy
-        protobuf.ParseFromString(message.value)               # Load the message value into the protocol buffer
 
-        if protobuf.type == protobuf.UPDATE:
-            raise ValueError("Encountered UPDATE record at message offset:{}, logic not implemented".format(message.offset))
+        tmp_pbuf.ParseFromString(message.value)            # Load the message value into the protocol buffer
 
-        if protobuf.type == protobuf.UPDATE_END and found_start:
+        if tmp_pbuf.type > 2:
+            # Any types other than 0,1,2 are unexpected
+            raise ValueError("Unknown type:{} at message offset:{}".format(protobuf.type, message.offset))
+
+        if tmp_pbuf.type == protobuf.UPDATE and found_start:
+            protobuf.MergeFromString(message.value)
+            raise ValueError("Encountered UPDATE record at message offset:{}, logic not tested".format(message.offset))
+            # continue   TODO Once tested, you should remove the exception and continue
+
+        if tmp_pbuf.type == protobuf.UPDATE_END and found_start:
             policy.ending_offset_value = message.offset
             debug("Found UPDATE_END at message offset:{}".format(message.offset))
             break
 
-        if protobuf.type == protobuf.UPDATE_START:
+        if tmp_pbuf.type == protobuf.UPDATE_START:
             found_start = True
+            protobuf.ParseFromString(message.value)        # Load the message value into the protocol buffer
             debug("Found UPDATE_START at message offset:{}".format(message.offset))
 
         if found_start:
             policy.buffers.append(protobuf)
+            # generates too much output debug("listfields {}".format(protobuf.ListFields()))
             continue
         else:
             debug("Skipping message offset:{}".format(message.offset))
             continue
-
-        # Any types other than 0,1,2 are unexpected
-        raise ValueError("Unknown type:{} at message offset:{}".format(protobuf.type, message.offset))
 
     return policy
 
@@ -210,13 +219,25 @@ def decode_policy(policy):
     :param policy: 
     :return: 
     """
+    # debug("Tenant Network Policy {}".format(policy.tenant_network_policy))
+
     for item in policy.tenant_network_policy.network_policy:
-        print "Catch_all: %s" % item.catch_all.action
+        debug("Catch_all: %s" % item.catch_all.action)
         for intent in item.intents:
-            print "Intent_id: %s" % intent.meta_data.intent_id
+            # debug("Intent_id: %s" % intent.meta_data.intent_id)
             for proto in intent.flow_filter.protocol_and_ports:
-                print "protocol:%s port_ranges: %s" % (proto.protocol, proto.port_ranges)
-                kkk = proto.port_ranges
+                # debug("protocol:%s " % (proto.protocol))
+                for ports in proto.port_ranges:
+                    debug("{} protocol:{} ports:{} {}".format(intent.meta_data.intent_id, proto.protocol, ports.end_port, ports.start_port))
+    return
+
+def get_json(buffer):
+    """
+    :param buffer: 
+    :return: 
+    """
+    json_string = json_format.MessageToJson(buffer)
+    debug("JSON: {}".format(json_string))
     return
 
 def main():
@@ -225,6 +246,7 @@ def main():
     args = set_arguments()                                 # Get arguments into the program
     network_policy = get_policy_update(args)               # Returned is discrete network policy, one unit of policy
     for policy in network_policy.buffers:
+        # get_json(policy)
         decode_policy(policy)
     debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
     return
