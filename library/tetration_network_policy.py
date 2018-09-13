@@ -65,15 +65,24 @@ import sys
 #
 from kafka import KafkaConsumer
 #
-#  Protocol Buffer Imports  (User compliled, source is Tetration documentation)
+#  Protocol Buffer Imports  (User compiled, source is Tetration documentation)
 #
 sys.path.append('/home/administrator/tetration/ansible-tetration/library')
 sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
 import tetration_network_policy_pb2
 #
-# Constants
+# Constant Imports
 #
 from tetration_network_policy_constants import *
+from ip_protocols import ProtocolMap
+#
+# Ansible Imports
+#
+try:
+    from ansible_hacking import AnsibleModule              # Test
+except ImportError:
+    from ansible.module_utils.basic import *               # Production
+
 
 class PolicySet(object):
     """
@@ -86,15 +95,6 @@ class PolicySet(object):
         self.ending_offset_value = None                  # The message offset of the UPDATE_END record
 
 
-def set_arguments():
-    """
-    TODO THIS IS Temporary, only used for development
-    """
-    return dict(certs='/home/administrator/tetration/ansible-tetration/files/certificates/producer-tnp-2.cert/',
-                broker='10.253.239.14:9093', # kafkaBrokerIps.txt - IP address/portthat Kafka Client should use
-                topic='Tnp-2')               # topic - file contains the topic this client can read the messages from.
-                                             # Topics are of the format topic-<root_scope_id>
-
 def debug(msg, level=LOG_INFO):
     """
     The debug switch should only be enabled when executing outside Ansible.
@@ -105,9 +105,9 @@ def debug(msg, level=LOG_INFO):
     :return: None
     """
     if DEBUG and level <= DEBUG_LEVEL:
-        print "{}:{}".format(level,msg)
+        print "{}: {}".format(level,msg)
 
-def create_ssl_context(cert_dir):
+def create_ssl_context(args):
     """
     Our Tetration cluster was created using a self-signed certificate.
     KafkaConsumer provides a means to provide our own SSL context, enabling
@@ -119,10 +119,10 @@ def create_ssl_context(cert_dir):
     :return: ssl context 
     """
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ctx.load_cert_chain("{}{}".format(cert_dir, KAFKA_CONSUMER_CA),
-                        keyfile="{}{}".format(cert_dir, KAFKA_PRIVATE_KEY),
+    ctx.load_cert_chain("{}{}".format(args['cert_directory'], args['certificate_name']),
+                        keyfile="{}{}".format(args['cert_directory'], args['private_key']),
                         password=None)
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx.verify_mode = ssl.CERT_NONE                        # TODO Enable verification
     return ctx
 
 def create_consumer(args):
@@ -139,9 +139,9 @@ def create_consumer(args):
                               bootstrap_servers=args.get('broker'), 
                               auto_offset_reset='earliest',           # consume earliest available messages,
                               enable_auto_commit=False,               # don't commit offsets
-                              consumer_timeout_ms=1000,               # StopIteration if no message after 1 secone
+                              consumer_timeout_ms=args.get('timeout'),# StopIteration if no message after 1 second
                               security_protocol='SSL',                # must be capitalized
-                              ssl_context= create_ssl_context(args.get('certs'))
+                              ssl_context= create_ssl_context(args)
                              )
 
     debug("All the topics available :{}".format(consumer.topics()))
@@ -240,7 +240,7 @@ def decode_policy(policy):
             for proto in intent.flow_filter.protocol_and_ports:
                 # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
-                    debug("{} protocol:{} ports:{} {}".format(intent.meta_data.intent_id, proto.protocol, ports.end_port, ports.start_port))
+                    debug("{} protocol:{} ports:{} {}".format(intent.meta_data.intent_id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
     return
 
 def get_json(buffer):
@@ -254,14 +254,36 @@ def get_json(buffer):
     return
 
 def main():
+    """ 
+                                             # kafkaBrokerIps.txt - IP address/portthat Kafka Client should use
+                                             # topic - file contains the topic this client can read the messages from.
+                                             # Topics are of the format topic-<root_scope_id>
     """
-    """
-    args = set_arguments()                                 # Get arguments into the program
-    network_policy = get_policy_update(args)               # Returned is discrete network policy, one unit of policy
+    module = AnsibleModule(
+        argument_spec=dict(
+            broker=dict(required=True),
+            topic=dict(required=True),
+            timeout=dict(default=1000, type='int', required=False),
+            private_key=dict(default=KAFKA_PRIVATE_KEY, required=False),
+            certificate_name=dict(default=KAFKA_CONSUMER_CA, required=False),
+            cert_directory=dict(required=True),
+            validate_certs=dict(default=True, required=False, type='bool')
+        ),
+        supports_check_mode=False
+    )
+
+    if module.params.get('validate_certs') != 'no':
+        module.fail_json(msg='TODO: Validate certs not implemented')
+    debug('{}'.format(module.params))
+
+    network_policy = get_policy_update(module.params)        # Returned is discrete network policy, one unit of policy
     if len(network_policy.buffers) > 1:
         raise ValueError('TODO: Never encountered UPDATE records, need to test Merging')
+    try:
+        decode_policy(network_policy.buffers[0])
+    except IndexError:
+        module.fail_json(msg='No messages returned, consider increasing the default timeout of 1000 ms.')
 
-    decode_policy(network_policy.buffers[0])
     debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
     return
 
