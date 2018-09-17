@@ -1,0 +1,122 @@
+#!/usr/bin/ansible-playbook
+---
+#
+#      Copyright (c) 2018 World Wide Technology, Inc.
+#      All rights reserved.
+#
+#      author: @joelwking
+#
+#      description: 
+#        This playbook uses policy information exported from Tetration,  
+#        which has been transform(ed) into a spreadsheet. The input to this program is a .csv
+#        file which is used to create Contracts, Subjects, Filters and Filter entries in ACI.
+#
+#      usage:
+#
+#        ./aci_contracts_filters.yml -e "csv_file=./files/tetration.csv"
+#
+#        ./aci_contracts_filters.yml -e "desired_state=absent"
+#
+#     requirements:
+#          Install pyopenssl, see https://pyopenssl.org/en/stable/install.html
+#
+#          Use signature-based authentication with Ansible:
+#          https://docs.ansible.com/ansible/devel/scenario_guides/guide_aci.html#signature-based-authentication-using-certificates
+#
+#     references:
+#          https://blog.confirm.ch/deploying-ssl-private-keys-with-ansible/
+#
+#     passwords.yml is structured as:
+#     ---
+#     apic:
+#       username: kingjoe
+#       ssl_private_key: |
+#         -----BEGIN PRIVATE KEY-----
+#         MIIC....
+#         -----END PRIVATE KEY-----
+#
+#       ssl_certificate: |
+#         -----BEGIN CERTIFICATE-----
+#         MIIC....
+#         -----END CERTIFICATE-----
+#
+- name: Create ACI Contracts and Filters from Tetration policy analysis
+  hosts:  aci
+  connection: local
+  gather_facts: no
+
+  vars:
+    #
+    #  These are default values which can be overridden at run time
+    #  -e EXTRA_VARS, --extra-vars=EXTRA_VARS
+    #                    set additional variables as key=value or YAML/JSON, if filename prepend with @
+    #
+    tenant: tetration_policy_enforce                       # tenant name
+    cert_directory: producer-tnp-2.cert                    # directory name of tetration certificates
+    ap: foo                                                # application profile
+    desired_state: present                                 # 'present' (to create) or 'absent' (to delete)
+    scope: tenant                                          # 'application-profile' or 'tenant'
+    reverse_filter: no                                     # 'yes' or 'no' should filter be reversed?
+    log: log                                               # Determines if the binding should be set to log
+    validate_certs: no                                     # certificate verify
+
+  tasks:
+
+    - name: Include credentials from an encrypted password.yml file
+      include_vars: '{{ playbook_dir }}/files/passwords.yml'
+      no_log: True
+
+    - name: The private_key and certificate files are in passwords.yml
+      copy:
+        content: '{{ item.value }}'
+        dest:  '{{ playbook_dir }}/files/certificates/{{ item.name }}'
+        mode: 0600
+      no_log: True
+      with_items:
+        - {'value': '{{ apic.ssl_private_key }}', 'name': '{{apic.username}}.key' }
+        - {'value': '{{ apic.ssl_certificate }}', 'name': '{{apic.username}}.crt' }
+
+    - name: Tetration Network Policy
+      tetration_network_policy:
+        broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+        topic: "{{ loopup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+        cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
+        validate_certs: '{{ validate_certs }}'
+      register: tpe
+#
+#   Filter Section
+#
+    - name: Add (or delete) a filter to a tenant
+      aci_filter:
+        hostname: '{{ inventory_hostname }}'
+        username: '{{ apic.username }}'
+        private_key: '{{ playbook_dir }}/files/certificates/{{ apic.username }}.key'
+        validate_certs: '{{ validate_certs }}'
+        state: '{{ desired_state }}'
+        #
+        tenant: '{{ tenant }}'
+        filter: '{{ item.filter_name }}'
+        description: '{{ item.filter_descr }}'
+      with_items: '{{ tpe.acl }}'
+      tags: filter
+
+    - name: Add the filter entry to the filter
+      aci_filter_entry:
+        hostname: '{{ inventory_hostname }}'
+        username: '{{ apic.username }}'
+        private_key: '{{ playbook_dir }}/files/certificates/{{ apic.username }}.key'
+        validate_certs: '{{ validate_certs }}'
+        state: '{{ desired_state }}'
+        #
+        tenant: '{{ tenant }}'
+        filter: '{{ item.filter_name }}'                   # Name of Filter that the entry should belong to.
+        entry: '{{ item.entry_name }}'                     # Name of the filter entry.
+        description: '{{ item.filter_entry_descr }}'       # Description of the filter entry.
+        ether_type: '{{ item.ether_type }}'                # Ethernet type, IP, arp, etc.
+        ip_protocol: '{{ item.ip_protocol }}'              # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
+        dst_port_start: '{{ item.dst_port_start }}'        # Starting L4 port number.
+        dst_port_end: '{{ item.dst_port_end }}'            # Ending L4 port number.
+      with_items: '{{ tpe.acl }}'
+      when: desired_state == "present"                     # Deleting the filter deletes the entry
+      tags: entry
+

@@ -155,7 +155,8 @@ class PolicySet(object):
     def __init__(self):
         """
         """
-        self.buffers = []                                # Create an empty list to hold all buffers
+        self.result = dict(ansible_facts={})             # Empty dictionary to output JSON to Ansible
+        self.buffer = None                               # Network Policy buffer
         self.ending_offset_value = None                  # The message offset of the UPDATE_END record
 
         self.tenant_name = None                          # tenant_name
@@ -232,26 +233,9 @@ def create_consumer(args):
 
 def get_policy_update(args):
     """
-        Refer to the documentation at: https://<tetration>/documentation/ui/adm/policies.html
-        this is an excerpt from the documentation
+        Refer to the documentation at: https://<tetration>/documentation/ui/adm/policies.html 
+        for information on how network policy messages are published.
         
-            // The network policy updates we send over Kafka can be large; over a couple of
-            // GB each. Given that it is recommended to keep individual Kafka messages under
-            // 10MB we split each policy update into several smaller Kafka messages. To
-            // enable clients to correctly reconstruct the state and handle error scenarios
-            // we wrap each Kafka message under KafkaUpdate proto. Every policy update will
-            // have a begin marker UPDATE_START and end marker UPDATE_END.
-            // To reiterate every Policy update will have following set of messages:
-            //           - UPDATE_START indicates a new policy update begins.
-            //           - Several UPDATE messages with increasing sequence numbers.
-            //           - UPDATE_END indicates the new policy update is complete.
-            // Note that the first message's (UPDATE_START) sequence number is zero and
-            // subsequent message's sequence numbers are strictly incremented by one.
-            // A client reading these updates should read all the messages from UPDATE_START
-            // to UPDATE_END. If any message is missing then client should skip all the
-            // messages until the next UPDATE_START message.
-            
-
         Kafka messages are comprised of a topic, partition, offset, key and value.        
             
         The key (message.key), for all records, have a value of 2. The message value 
@@ -280,6 +264,7 @@ def get_policy_update(args):
 
         if tmp_pbuf.type == protobuf.UPDATE and found_start:
             protobuf.MergeFromString(message.value)
+            policy.buffer = protobuf                       # Replace what was saved when we found_start
             raise ValueError("Encountered UPDATE record at message offset:{}, logic not tested".format(message.offset))
             # continue   TODO Once tested, you should remove the exception and continue
 
@@ -294,7 +279,7 @@ def get_policy_update(args):
             debug("Found UPDATE_START at message offset:{}".format(message.offset))
 
         if found_start:
-            policy.buffers.append(protobuf)
+            policy.buffer = protobuf
             debug("listfields {}".format(protobuf.ListFields()), level=LOG_DEBUG)
             continue
         else:
@@ -305,30 +290,42 @@ def get_policy_update(args):
 
 def decode_policy(policy):
     """
-    :param policy: 
+    :param policy: A PolicySet() object
     :return: 
     """
-    debug("Tenant Network Policy:tenant name: {}".format(policy.tenant_network_policy.tenant_name))
+    tnp = policy.buffer.tenant_network_policy
+    policy.tenant_name = tnp.tenant_name                   # debug("Tenant name: {}".format(tnp.tenant_name))
 
-    for item in policy.tenant_network_policy.network_policy:
-        debug("Catch_all: %s" % item.catch_all.action)
-        for intent in item.intents:
-            # debug("Intent_id: %s" % intent.id)
-            for proto in intent.flow_filter.protocol_and_ports:
-                # debug("protocol:%s " % (proto.protocol))
+    for item in tnp.network_policy:
+        policy.catch_all = item.catch_all.action           # debug("Catch_all: %s" % item.catch_all.action)
+        for intent in item.intents:                        # debug("Intent_id: %s" % intent.id)
+            for proto in intent.flow_filter.protocol_and_ports: # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
-                    debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
+                    # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
+                    policy.acl_line = dict(
+                                      filter_name=intent.id,
+                                      filter_descr=intent.id,
+                                      entry_name="{}-port_{}".format(ProtocolMap().get_keyword(proto.protocol),ports.start_port),
+                                      filter_entry_descr="",
+                                      ip_protocol=ProtocolMap().get_keyword(proto.protocol),
+                                      ether_type="IP",
+                                      dst_port_start=ports.start_port,
+                                      dst_port_end=ports.end_port)
+                    policy.acl.append(policy.acl_line)
     return
 
-def get_json(buffer):
+def format_result(policy):
     """
-    TODO NOT IMPLEMENTED
-    :param buffer: 
+    Format the data collected into a dictionary to output JSON to the calling playbook
+    :param policy: A PolicySet() object
     :return: 
     """
-    json_string = json_format.MessageToJson(buffer)
-    debug("JSON: {}".format(json_string))
-    return
+    catch_all_options = {1:'ALLOW', 2:'DROP'}              # TODO understand how to decode with protocol buffer
+    policy.result["ansible_facts"]['tenant'] = policy.tenant_name
+    policy.result["ansible_facts"]['catch_all'] = catch_all_options.get(policy.catch_all)
+    policy.result["ansible_facts"]['update_end_offset'] = policy.ending_offset_value
+    policy.result["ansible_facts"]['acl'] = policy.acl
+    debug("result: {}".format(policy.result))
 
 def main():
     """ 
@@ -351,15 +348,15 @@ def main():
     debug('{}'.format(module.params))
 
     network_policy = get_policy_update(module.params)        # Returned is discrete network policy, one unit of policy
-    if len(network_policy.buffers) > 1:
-        raise ValueError('TODO: Never encountered UPDATE records, need to test Merging')
-    try:
-        decode_policy(network_policy.buffers[0])
-    except IndexError:
+    if network_policy.buffer:
+        decode_policy(network_policy)
+        format_result(network_policy)
+    else:
         module.fail_json(msg='No messages returned, consider increasing the default timeout of 1000 ms.')
 
     debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
-    return
+    module.exit_json(changed=False, **network_policy.result)
+
 
 if __name__ == '__main__':
     """ Logic for remote debugging with Pycharm Pro
