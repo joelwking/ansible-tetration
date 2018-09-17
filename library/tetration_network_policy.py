@@ -1,20 +1,84 @@
 #!/usr/bin/env python
-"""
+# -*- coding: utf-8 -*-
+#
+#     Copyright (c) 2018 World Wide Technology, Inc.
+#     All rights reserved.
+#
+#     author: joel.king@wwt.com
+#     written:  22 August 2018
+#
+ANSIBLE_METADATA = {
+    'metadata_version': '1.0',
+    'status': ['preview'],
+    'supported_by': '@joelwking'
+}
+DOCUMENTATION = '''
+---
+module: tetration_network_policy
 
-    Copyright (c) 2018 World Wide Technology, Inc.
-    All rights reserved.
+short_description: Retrieve network policy from the Tetration Kafka message bus and return as facts to the playbook
 
-    author: joel.king@wwt.com
-    written:  22 August 2018
-    description:
+version_added: "2.8"
+
+description:
+    -  Policies Publisher is an advanced Tetration feature allowing third party vendors to implement their own enforcement 
+    -  algorithms optimized for network appliances such as load balancers or firewalls.
+    -  The values for broker and topic are obtained by downloading the certificate for the configured Data Tap,
+    -  see: https://<tetration>/#/maintenance/lab_admin/datataps
+    -  The cert_directory is the location where the downloaded client certificate was uncompressed / untar'ed.
+    -  In that directory, the file 'kafkaBrokerIps.txt' - IP address/port of the broker that Kafka Client should use
+    -  The file 'topic' contains the topic this client can read the messages from. Topics are of the format 
+    -  topic-<root_scope_id> e.g. Tnp-1
+
+options:
+    broker:
+        description:
+            - Name of the database to query, add or update documents
+        required: true
+    
+    topic:
+        description:
+            - foo
+        required: true
         
-        Policies Publisher is an advanced Tetration feature allowing third party vendors to implement their own enforcement 
-        algorithms optimized for network appliances such as load balancers or firewalls. 
+    cert_directory:
+        description:
+            - foo
+        required: true
+        
+    validate_certs:
+        description:
+            - foo
+        required: false
+    
+    certificate_name:
+        description:
+            - foo
+        required: false
+    
+    private_key:
+        description:
+            - foo
+        required: false
 
-    usage:
-        TODO
+author:
+    - Joel W. King (@joelwking)
+'''
 
-    resources:
+EXAMPLES = '''
+
+  - name: Tetration Network Policy
+    tetration_network_policy:
+      broker: "192.0.2.1:9093"
+      topic: "Tnp-2"
+      cert_directory: "{{ playbook_dir }}/files/certificates/producer-tnp-2.cert/"
+      validate_certs: "no"
+      certificate_name: "KafkaConsumerCA.cert"
+      private_key: "KafkaConsumerPrivateKey.key"
+
+'''
+# Resources:
+"""
         Kafka
           https://github.com/confluentinc/confluent-kafka-python
           http://www.kafkatool.com/download.html
@@ -94,6 +158,19 @@ class PolicySet(object):
         self.buffers = []                                # Create an empty list to hold all buffers
         self.ending_offset_value = None                  # The message offset of the UPDATE_END record
 
+        self.tenant_name = None                          # tenant_name
+        self.catch_all =  None                           # ALLOW=1, DROP=2
+        self.acl = []                                    # Create an empty list to hold ACL lines
+                                                         # Individual ACL line template
+        self.acl_line = dict(filter_name=None,           # tcp-135
+                             filter_descr=None,          # Intent ID: bf70c631367bf5eefba9c6d3aae8c9a0
+                             entry_name=None,            # tcp-port_135
+                             filter_entry_descr=None,    # blank
+                             ip_protocol=None,           # TCP
+                             ether_type=None,            # IP
+                             dst_port_start=None,        # 135
+                             dst_port_end=None)          # 135
+
 
 def debug(msg, level=LOG_INFO):
     """
@@ -105,7 +182,7 @@ def debug(msg, level=LOG_INFO):
     :return: None
     """
     if DEBUG and level <= DEBUG_LEVEL:
-        print "{}: {}".format(level,msg)
+        print "{}: {}".format(level, msg)
 
 def create_ssl_context(args):
     """
@@ -231,16 +308,16 @@ def decode_policy(policy):
     :param policy: 
     :return: 
     """
-    # debug("Tenant Network Policy {}".format(policy.tenant_network_policy))
+    debug("Tenant Network Policy:tenant name: {}".format(policy.tenant_network_policy.tenant_name))
 
     for item in policy.tenant_network_policy.network_policy:
         debug("Catch_all: %s" % item.catch_all.action)
         for intent in item.intents:
-            # debug("Intent_id: %s" % intent.meta_data.intent_id)
+            # debug("Intent_id: %s" % intent.id)
             for proto in intent.flow_filter.protocol_and_ports:
                 # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
-                    debug("{} protocol:{} ports:{} {}".format(intent.meta_data.intent_id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
+                    debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
     return
 
 def get_json(buffer):
@@ -255,9 +332,6 @@ def get_json(buffer):
 
 def main():
     """ 
-                                             # kafkaBrokerIps.txt - IP address/portthat Kafka Client should use
-                                             # topic - file contains the topic this client can read the messages from.
-                                             # Topics are of the format topic-<root_scope_id>
     """
     module = AnsibleModule(
         argument_spec=dict(
@@ -288,9 +362,13 @@ def main():
     return
 
 if __name__ == '__main__':
-    
-    ####
-    import pydevd
-    pydevd.settrace(PYDEVD_HOST, stdoutToServer=True, stderrToServer=True)
-    ####
+    """ Logic for remote debugging with Pycharm Pro
+    """
+    try:
+        import pydevd
+    except ImportError:
+        pass
+    else:
+        import os     # os.getenv("SSH_CLIENT").split(" ")  ['192.168.56.1', '51406', '22']
+        pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
     main()

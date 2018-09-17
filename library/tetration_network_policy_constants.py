@@ -25,5 +25,3 @@ TETRATION_VERSION = '2.3.1.49'                             # Program tested with
 API_VERSION = (0,9)                                        # Required by KafkaConsumer, a guess based on the documentation
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
-PYDEVD_HOST = '192.168.56.1'                               # Laptop IP address, running PyCharm Remote debugger
-                                                           # Refer to https://github.com/joelwking/ansible-hacking
