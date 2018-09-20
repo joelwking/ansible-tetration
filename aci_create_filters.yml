@@ -8,7 +8,7 @@
 #
 #      description: 
 #        This playbook uses network policy from Tetration,
-  #      ...
+#      ...
 #        which is used to create Filters and Filter entries in ACI.
 #
 #      usage:
@@ -59,7 +59,9 @@
     validate_certs: 'no'                                     # certificate verify
 
   tasks:
-
+#
+#   Credentials (ACI) Section
+#
     - name: Include credentials from an encrypted password.yml file
       include_vars: '{{ playbook_dir }}/files/passwords.yml'
       no_log: True
@@ -73,32 +75,18 @@
       with_items:
         - {'value': '{{ apic.ssl_private_key }}', 'name': '{{apic.username}}.key' }
         - {'value': '{{ apic.ssl_certificate }}', 'name': '{{apic.username}}.crt' }
-
+#
+#   Tetration Policies Publisher Section
+#
     - name: Tetration Network Policy
       tetration_network_policy:
         broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
         topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: '{{ validate_certs }}'
-      register: tpe
-      tags: module
-
-    - name: Tetration Network Policy
-      shell: python tetration_network_policy.py
-      args:
-        chdir: /home/administrator/tetration/ansible-tetration/library/
-      register: tpe
-      tags: hacking
-
-    - debug:
-        msg: " {{ tpe.stdout }}"
-      tags: hacking
-    - name: converto to json
-      set_fact:
-        tpe: "{{ tpe.stdout | from_json }}"
-      tags: hacking
+      register: tnp
 #
-#   Filter Section
+#   ACI Filter / Filter Entry Section
 #
     - name: Add (or delete) a filter to a tenant
       aci_filter:
@@ -111,7 +99,7 @@
         tenant: '{{ tenant }}'
         filter: '{{ item.filter_name }}'
         description: '{{ item.filter_descr }}'
-      with_items: '{{ tpe.ansible_facts.acl }}'
+      with_items: '{{ tnp.ansible_facts.acl }}'
       tags: filter
 
     - name: Add the filter entry to the filter
@@ -130,7 +118,7 @@
         ip_protocol: '{{ item.ip_protocol }}'              # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
         dst_port_start: '{{ item.dst_port_start }}'        # Starting L4 port number.
         dst_port_end: '{{ item.dst_port_end }}'            # Ending L4 port number.
-      with_items: '{{ tpe.ansible_facts.acl }}'
+      with_items: '{{ tnp.ansible_facts.acl }}'
       when: desired_state == "present"                     # Deleting the filter deletes the entry
       tags: entry
 
