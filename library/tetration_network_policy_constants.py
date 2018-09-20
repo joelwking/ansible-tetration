@@ -16,12 +16,12 @@ LOG_ERR = 3
 LOG_CRIT = 2
 LOG_ALERT = 1
 LOG_EMERG = 0
-DEBUG = True
+DEBUG = False
 DEBUG_LEVEL = LOG_INFO
 #
 # Constants
 #
-TETRATION_VERSION = '2.3.1.49'                             # Program tested with this version of Tetration
+TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
 API_VERSION = (0,9)                                        # Required by KafkaConsumer, a guess based on the documentation
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer

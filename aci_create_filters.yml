@@ -7,15 +7,13 @@
 #      author: @joelwking
 #
 #      description: 
-#        This playbook uses policy information exported from Tetration,  
-#        which has been transform(ed) into a spreadsheet. The input to this program is a .csv
-#        file which is used to create Contracts, Subjects, Filters and Filter entries in ACI.
+#        This playbook uses network policy from Tetration,
+  #      ...
+#        which is used to create Filters and Filter entries in ACI.
 #
 #      usage:
 #
-#        ./aci_contracts_filters.yml -e "csv_file=./files/tetration.csv"
-#
-#        ./aci_contracts_filters.yml -e "desired_state=absent"
+#        ./aci_create_filters.yml -e "cert_directory=producer-tnp-2.cert desired_state=absent"
 #
 #     requirements:
 #          Install pyopenssl, see https://pyopenssl.org/en/stable/install.html
@@ -58,7 +56,7 @@
     scope: tenant                                          # 'application-profile' or 'tenant'
     reverse_filter: no                                     # 'yes' or 'no' should filter be reversed?
     log: log                                               # Determines if the binding should be set to log
-    validate_certs: no                                     # certificate verify
+    validate_certs: 'no'                                     # certificate verify
 
   tasks:
 
@@ -79,10 +77,26 @@
     - name: Tetration Network Policy
       tetration_network_policy:
         broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
-        topic: "{{ loopup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+        topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: '{{ validate_certs }}'
       register: tpe
+      tags: module
+
+    - name: Tetration Network Policy
+      shell: python tetration_network_policy.py
+      args:
+        chdir: /home/administrator/tetration/ansible-tetration/library/
+      register: tpe
+      tags: hacking
+
+    - debug:
+        msg: " {{ tpe.stdout }}"
+      tags: hacking
+    - name: converto to json
+      set_fact:
+        tpe: "{{ tpe.stdout | from_json }}"
+      tags: hacking
 #
 #   Filter Section
 #
@@ -97,7 +111,7 @@
         tenant: '{{ tenant }}'
         filter: '{{ item.filter_name }}'
         description: '{{ item.filter_descr }}'
-      with_items: '{{ tpe.acl }}'
+      with_items: '{{ tpe.ansible_facts.acl }}'
       tags: filter
 
     - name: Add the filter entry to the filter
@@ -116,7 +130,7 @@
         ip_protocol: '{{ item.ip_protocol }}'              # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
         dst_port_start: '{{ item.dst_port_start }}'        # Starting L4 port number.
         dst_port_end: '{{ item.dst_port_end }}'            # Ending L4 port number.
-      with_items: '{{ tpe.acl }}'
+      with_items: '{{ tpe.ansible_facts.acl }}'
       when: desired_state == "present"                     # Deleting the filter deletes the entry
       tags: entry
 

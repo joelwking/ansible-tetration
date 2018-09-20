@@ -139,13 +139,6 @@ import tetration_network_policy_pb2
 #
 from tetration_network_policy_constants import *
 from ip_protocols import ProtocolMap
-#
-# Ansible Imports
-#
-try:
-    from ansible_hacking import AnsibleModule              # Test
-except ImportError:
-    from ansible.module_utils.basic import *               # Production
 
 
 class PolicySet(object):
@@ -218,20 +211,19 @@ def create_consumer(args):
                               auto_offset_reset='earliest',           # consume earliest available messages,
                               enable_auto_commit=False,               # don't commit offsets
                               consumer_timeout_ms=args.get('timeout'),# StopIteration if no message after 1 second
+                              fetch_max_wait_ms=2000,                 # TODO not useful
                               security_protocol='SSL',                # must be capitalized
                               ssl_context= create_ssl_context(args)
                              )
-
     debug("All the topics available :{}".format(consumer.topics()))
     debug("Subscription:{}".format(consumer.subscription()))
     debug("Partitions for topic:{}".format(consumer.partitions_for_topic(args.get('topic'))))
     debug("TopicPartitions:{}".format(consumer.assignment()))
     debug("Beginning offsets:{}".format(consumer.beginning_offsets(consumer.assignment())))
     debug("End offsets:{}\n".format(consumer.end_offsets(consumer.assignment())))
-
     return consumer
 
-def get_policy_update(args):
+def get_policy_update(policy, input_data):
     """
         Refer to the documentation at: https://<tetration>/documentation/ui/adm/policies.html 
         for information on how network policy messages are published.
@@ -247,8 +239,8 @@ def get_policy_update(args):
         UPDATE records in testing, raise a ValueError exception to flag for future development.
         
     """
-    input_data = create_consumer(args)                     # Attach to the message bus, this is our INPUT data
-    policy = PolicySet()                                   # Object to hold Network Policy for processing
+    # input_data = create_consumer(args)                     # Attach to the message bus, this is our INPUT data
+    # policy = PolicySet()                                   # Object to hold Network Policy for processing
     found_start = False                                    # skip all the messages until the next UPDATE_START message.
 
     protobuf = tetration_network_policy_pb2.KafkaUpdate()  # Create object for Tetration Network Policy
@@ -286,7 +278,7 @@ def get_policy_update(args):
             debug("Skipping message offset:{}".format(message.offset))
             continue
 
-    return policy
+    # return policy
 
 def decode_policy(policy):
     """
@@ -303,12 +295,12 @@ def decode_policy(policy):
                 for ports in proto.port_ranges:
                     # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
                     policy.acl_line = dict(
-                                      filter_name=intent.id,
-                                      filter_descr=intent.id,
+                                      filter_name="{}-{}".format(ProtocolMap().get_keyword(proto.protocol),ports.start_port),
+                                      filter_descr="Intent_id:{}".format(intent.id),
                                       entry_name="{}-port_{}".format(ProtocolMap().get_keyword(proto.protocol),ports.start_port),
                                       filter_entry_descr="",
                                       ip_protocol=ProtocolMap().get_keyword(proto.protocol),
-                                      ether_type="IP",
+                                      ether_type="ip",
                                       dst_port_start=ports.start_port,
                                       dst_port_end=ports.end_port)
                     policy.acl.append(policy.acl_line)
@@ -325,7 +317,15 @@ def format_result(policy):
     policy.result["ansible_facts"]['catch_all'] = catch_all_options.get(policy.catch_all)
     policy.result["ansible_facts"]['update_end_offset'] = policy.ending_offset_value
     policy.result["ansible_facts"]['acl'] = policy.acl
-    debug("result: {}".format(policy.result))
+
+#
+# Ansible Imports
+#
+try:
+    from ansible_hacking import AnsibleModule              # Test
+except ImportError:
+    from ansible.module_utils.basic import AnsibleModule   # Production
+
 
 def main():
     """ 
@@ -343,29 +343,48 @@ def main():
         supports_check_mode=False
     )
 
-    if module.params.get('validate_certs') != 'no':
-        module.fail_json(msg='TODO: Validate certs not implemented')
+    # TODO need to support booleans in ansible-hacking
+    # if module.params.get('validate_certs') != 'no':
+    #    module.fail_json(msg='TODO: Validate certs not implemented')
+    # TODO verify cert_directory has a trailing '/'
     debug('{}'.format(module.params))
 
-    network_policy = get_policy_update(module.params)        # Returned is discrete network policy, one unit of policy
-    if network_policy.buffer:
-        decode_policy(network_policy)
-        format_result(network_policy)
-    else:
-        module.fail_json(msg='No messages returned, consider increasing the default timeout of 1000 ms.')
+    input_data = create_consumer(module.params)               # Attach to the message bus, this is our INPUT data
 
-    debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
-    module.exit_json(changed=False, **network_policy.result)
+    db = []
+    db.append("All the topics available :{}".format(input_data.topics()))
+    db.append("Subscription:{}".format(input_data.subscription()))
+    db.append("Partitions for topic:{}".format(input_data.partitions_for_topic('Tnp-2')))
+    db.append("TopicPartitions:{}".format(input_data.assignment()))
+    db.append("Beginning offsets:{}".format(input_data.beginning_offsets(input_data.assignment())))
+    db.append("End offsets:{}".format(input_data.end_offsets(input_data.assignment())))
+
+    policy = PolicySet()                                   # Object to hold Network Policy for processing
+    # network_policy = get_policy_update(policy, input_data)        # Returned is discrete network policy, one unit of policy
+    get_policy_update(policy, input_data)
+    decode_policy(policy)
+    format_result(policy)
+    policy.result["ansible_facts"]['debug'] = db
+    module.exit_json(changed=False, **policy.result)
+    #if network_policy.buffer:
+    #    decode_policy(network_policy)
+    #    format_result(network_policy)
+    #else:
+    #    module.fail_json(msg='No messages returned, topics: {}'.format(db))
+
+    #debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
+    #module.exit_json(changed=False, **network_policy.result)
 
 
 if __name__ == '__main__':
     """ Logic for remote debugging with Pycharm Pro
     """
-    try:
-        import pydevd
-    except ImportError:
-        pass
-    else:
-        import os     # os.getenv("SSH_CLIENT").split(" ")  ['192.168.56.1', '51406', '22']
-        pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
+    if DEBUG:
+        try:
+            import pydevd
+        except ImportError:
+            pass
+        else:
+            import os     # os.getenv("SSH_CLIENT").split(" ")  ['192.168.56.1', '51406', '22']
+            pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
     main()
