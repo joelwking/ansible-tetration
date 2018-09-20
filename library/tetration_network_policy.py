@@ -6,6 +6,7 @@
 #
 #     author: joel.king@wwt.com
 #     written:  22 August 2018
+#     linter: flake8
 #
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -23,32 +24,37 @@ version_added: "2.8"
 description:
     -  Policies Publisher is an advanced Tetration feature allowing third party vendors to implement their own enforcement 
     -  algorithms optimized for network appliances such as load balancers or firewalls.
-    -  The values for broker and topic are obtained by downloading the certificate for the configured Data Tap,
-    -  see: https://<tetration>/#/maintenance/lab_admin/datataps
-    -  The cert_directory is the location where the downloaded client certificate was uncompressed / untar'ed.
-    -  In that directory, the file 'kafkaBrokerIps.txt' - IP address/port of the broker that Kafka Client should use
-    -  The file 'topic' contains the topic this client can read the messages from. Topics are of the format 
-    -  topic-<root_scope_id> e.g. Tnp-1
+
 
 options:
     broker:
         description:
-            - Name of the database to query, add or update documents
+            - IP address/port of the broker that Kafka Client should use, see file 'kafkaBrokerIps.txt'
+            -  The values for broker and topic are obtained by downloading the certificate for the configured Data Tap,
+            -  refer to https://<tetration>/#/maintenance/lab_admin/datataps
         required: true
     
     topic:
         description:
-            - foo
+            - "The file 'topic' contains the topic this client can read the messages from. Topics are of the format" 
+            - "topic-<root_scope_id> e.g. Tnp-1"
         required: true
+
+    timeout:
+        description:
+            - consumer_timeout_ms StopIteration if no message after 'n' ms.
+        default: 2000
+        required: false
         
     cert_directory:
         description:
-            - foo
+            -  The cert_directory is the location where the downloaded client certificate was uncompressed / untar'ed.
         required: true
         
     validate_certs:
         description:
-            - foo
+            - If your Tetration cluster was configured to use self-signed certificates, you must use a value of False 
+        default: True
         required: false
     
     certificate_name:
@@ -76,49 +82,15 @@ EXAMPLES = '''
       certificate_name: "KafkaConsumerCA.cert"
       private_key: "KafkaConsumerPrivateKey.key"
 
+  - name: Tetration Network Policy
+    tetration_network_policy:
+      broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+      topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+      cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
+      validate_certs: '{{ validate_certs }}'
+      register: tnp
+      
 '''
-# Resources:
-"""
-        Kafka
-          https://github.com/confluentinc/confluent-kafka-python
-          http://www.kafkatool.com/download.html
-          https://www.confluent.io/confluent-cloud/
-          https://gitlab.com/rtortori/tetration-alfred
-          Global configuration properties
-          https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
-          
-          https://stackoverflow.com/questions/42987129/kafka-10-python-client-with-authentication-and-authorization
-          https://www.cloudkarafka.com/blog/2016-12-13-part2-3-apache-kafka-for-beginners_example-and-sample-code-python.html
-          https://github.com/CloudKarafka/python-kafka-example
-          
-          https://kafka-python.readthedocs.io/en/1.1.1/apidoc/KafkaConsumer.html
-          #    https://media.readthedocs.org/pdf/kafka-python/master/kafka-python.pdf
-          
-        Google Protocol Buffers
-          https://developers.google.com/protocol-buffers/docs/pythontutorial
-          https://developers.google.com/protocol-buffers/docs/reference/python/google.protobuf.message.Message-class
-        
-        Tetration
-          https://10.253.239.4/documentation/ui/adm/policies.html?highlight=kafka#policies-publisher
-          
-          This link provides description of the files downloaded when you save the certificates.
-              https://10.253.239.4/documentation/ui/lab/managed_datatap.html
-          
-        Others:
-          https://github.com/remiphilippe/ansible-tetsensor
-          https://github.com/mrlesmithjr/cisco-tetration-management
-        
-        SSL:
-          https://github.com/edenhill/librdkafka/wiki/Using-SSL-with-librdkafka
-          https://stackoverflow.com/questions/35766702/how-to-verify-ssl-is-working-for-kafka
-          https://docs.python.org/2/library/ssl.html
-          openssl s_client -debug -connect localhost:9093 -tls1
-         
-        debug:
-          sudo tcpdump -A -X -nni enp0s3 host 10.253.239.14 -vv  
-
-    linter: flake8
-"""
 #
 #  System Imports
 #
@@ -129,30 +101,41 @@ import sys
 #
 from kafka import KafkaConsumer
 #
+#  Ansible Imports
+#
+try:
+    from ansible_hacking import AnsibleModule              # Test
+except ImportError:
+    from ansible.module_utils.basic import AnsibleModule   # Production
+#
 #  Protocol Buffer Imports  (User compiled, source is Tetration documentation)
 #
+# TODO eliminate these path appends
 sys.path.append('/home/administrator/tetration/ansible-tetration/library')
 sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
-import tetration_network_policy_pb2
+import tetration_network_policy_pb2                        # TODO import as to create shorter name
 #
-# Constant Imports
+# Constants
 #
-from tetration_network_policy_constants import *
-from ip_protocols import ProtocolMap
-
+DEBUG = False
+TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
+API_VERSION = (0,9)                                        # Required by KafkaConsumer, refer to
+                                                           # https://media.readthedocs.org/pdf/kafka-python/master/kafka-python.pdf
+SSL = 'SSL'                                                # must be capitalized
+IP = 'ip'                                                  # must be lower case for ACI filter/engry
+KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
+KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
 
 class PolicySet(object):
     """
-    Container for all messages that comprise a Network Policy, it creates a list of Protocol Buffers
+    Container for all messages that comprise a Network Policy, stores the Protocol Buffer
     """
     def __init__(self):
         """
         """
         self.result = dict(ansible_facts={})             # Empty dictionary to output JSON to Ansible
         self.buffer = None                               # Network Policy buffer
-        self.ending_offset_value = None                  # The message offset of the UPDATE_END record
-
-        self.tenant_name = None                          # tenant_name
+        self.update_end_offset = None                    # The message offset of the UPDATE_END record
         self.catch_all =  None                           # ALLOW=1, DROP=2
         self.acl = []                                    # Create an empty list to hold ACL lines
                                                          # Individual ACL line template
@@ -160,23 +143,30 @@ class PolicySet(object):
                              filter_descr=None,          # Intent ID: bf70c631367bf5eefba9c6d3aae8c9a0
                              entry_name=None,            # tcp-port_135
                              filter_entry_descr=None,    # blank
-                             ip_protocol=None,           # TCP
-                             ether_type=None,            # IP
+                             ip_protocol=None,           # tcp   must be lower case for ACI
+                             ether_type=None,            # ip    must be lower case for ACI
                              dst_port_start=None,        # 135
                              dst_port_end=None)          # 135
 
+    def add_fact(self, key, value):
+        """
+        Add a key and value to the results returned to the playbook
+        :param key: 
+        :param value: 
+        :return: 
+        """
+        self.result["ansible_facts"][key] = value
 
-def debug(msg, level=LOG_INFO):
+def debug(msg):
     """
     The debug switch should only be enabled when executing outside Ansible.
     The constants are specified in the tetration_network_policy_constants.py file
     
     :param msg: a message to ouput for debugging 
-    :param level: if provided, a means of enabling debug levels 0-7
     :return: None
     """
-    if DEBUG and level <= DEBUG_LEVEL:
-        print "{}: {}".format(level, msg)
+    if DEBUG:
+        print ": {}".format(msg)
 
 def create_ssl_context(args):
     """
@@ -196,31 +186,37 @@ def create_ssl_context(args):
     ctx.verify_mode = ssl.CERT_NONE                        # TODO Enable verification
     return ctx
 
-def create_consumer(args):
+def create_consumer(args, policy):
     """
     Refer to Python package kafka-python, a high-level message consumer of Kafka brokers.
     The consumer iterator returns consumer records, which expose basic message 
     attributes: topic, partition, offset, key, and value.
 
     :param args: Input arguments
-    :return: KafkaConsumer object 
+    :param policy: Object to store Network Policy for processing
+    :return: KafkaConsumer object, messages from the message bus for processing
     """
     consumer =  KafkaConsumer(args.get('topic'),             
                               api_version=API_VERSION,
                               bootstrap_servers=args.get('broker'), 
                               auto_offset_reset='earliest',           # consume earliest available messages,
                               enable_auto_commit=False,               # don't commit offsets
-                              consumer_timeout_ms=args.get('timeout'),# StopIteration if no message after 1 second
-                              fetch_max_wait_ms=2000,                 # TODO not useful
-                              security_protocol='SSL',                # must be capitalized
+                              consumer_timeout_ms=args.get('timeout'),# StopIteration if no message after 'n' seconds
+                              security_protocol=SSL,
                               ssl_context= create_ssl_context(args)
                              )
-    debug("All the topics available :{}".format(consumer.topics()))
-    debug("Subscription:{}".format(consumer.subscription()))
-    debug("Partitions for topic:{}".format(consumer.partitions_for_topic(args.get('topic'))))
-    debug("TopicPartitions:{}".format(consumer.assignment()))
-    debug("Beginning offsets:{}".format(consumer.beginning_offsets(consumer.assignment())))
-    debug("End offsets:{}\n".format(consumer.end_offsets(consumer.assignment())))
+
+    # Returned values are of type Set
+    msg = ["All the topics available :{}".format(consumer.topics()),
+           "Subscription:{}".format(consumer.subscription()),
+           "Partitions for topic:{}".format(consumer.partitions_for_topic(args.get('topic'))),
+           "TopicPartitions:{}".format(consumer.assignment())
+          ]
+    policy.add_fact('consumer_debug', msg)
+    # Offsets are type Int
+    policy.add_fact('beginning_offsets', str(consumer.beginning_offsets(consumer.assignment())))
+    policy.add_fact('end_offsets', str(consumer.end_offsets(consumer.assignment())))
+
     return consumer
 
 def get_policy_update(policy, input_data):
@@ -238,16 +234,17 @@ def get_policy_update(policy, input_data):
         and contain no data. Start (UPDATE_START) message contain data. Have not observed 
         UPDATE records in testing, raise a ValueError exception to flag for future development.
         
+        :param policy: Object to store Network Policy for processing
+        :param input_data: # Attach to the message bus, this is our INPUT data
+        :return:
     """
-    # input_data = create_consumer(args)                     # Attach to the message bus, this is our INPUT data
-    # policy = PolicySet()                                   # Object to hold Network Policy for processing
     found_start = False                                    # skip all the messages until the next UPDATE_START message.
 
     protobuf = tetration_network_policy_pb2.KafkaUpdate()  # Create object for Tetration Network Policy
     tmp_pbuf = tetration_network_policy_pb2.KafkaUpdate()  # Work area for decoding the protocol buffer type.
 
     for count, message in enumerate(input_data):
-        debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)), level=LOG_DEBUG)
+        debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)))
         tmp_pbuf.ParseFromString(message.value)            # Load the message value into the protocol buffer
 
         if tmp_pbuf.type > 2:
@@ -261,7 +258,7 @@ def get_policy_update(policy, input_data):
             # continue   TODO Once tested, you should remove the exception and continue
 
         if tmp_pbuf.type == protobuf.UPDATE_END and found_start:
-            policy.ending_offset_value = message.offset
+            policy.update_end_offset = message.offset
             debug("Found UPDATE_END at message offset:{}".format(message.offset))
             break
 
@@ -272,69 +269,55 @@ def get_policy_update(policy, input_data):
 
         if found_start:
             policy.buffer = protobuf
-            debug("listfields {}".format(protobuf.ListFields()), level=LOG_DEBUG)
+            # debug("listfields {}".format(protobuf.ListFields()))
             continue
         else:
             debug("Skipping message offset:{}".format(message.offset))
             continue
 
-    # return policy
+    return
 
 def decode_policy(policy):
     """
-    :param policy: A PolicySet() object
+    Decode the Network Policy, creating ACL lines to apply to a 'firewall'
+    
+    :param policy: Object to store Network Policy for processing
     :return: 
     """
     tnp = policy.buffer.tenant_network_policy
-    policy.tenant_name = tnp.tenant_name                   # debug("Tenant name: {}".format(tnp.tenant_name))
+    policy.add_fact('tenant_name', tnp.tenant_name)
 
     for item in tnp.network_policy:
-        policy.catch_all = item.catch_all.action           # debug("Catch_all: %s" % item.catch_all.action)
+        # policy.add_fact('catch_all', item.catch_all.action)
+        policy.add_fact('catch_all', tetration_network_policy_pb2.CatchAllPolicy.Action.Name(item.catch_all.action))
         for intent in item.intents:                        # debug("Intent_id: %s" % intent.id)
             for proto in intent.flow_filter.protocol_and_ports: # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
                     # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
+                    protocol = tetration_network_policy_pb2.IPProtocol.Name(proto.protocol).lower()
                     policy.acl_line = dict(
-                                      filter_name="{}-{}".format(ProtocolMap().get_keyword(proto.protocol),ports.start_port),
+                                      filter_name="{}-{}".format(protocol, ports.start_port),
                                       filter_descr="Intent_id:{}".format(intent.id),
-                                      entry_name="{}-port_{}".format(ProtocolMap().get_keyword(proto.protocol),ports.start_port),
+                                      entry_name="{}-port_{}".format(protocol, ports.start_port),
                                       filter_entry_descr="",
-                                      ip_protocol=ProtocolMap().get_keyword(proto.protocol),
-                                      ether_type="ip",
+                                      ip_protocol=protocol,
+                                      ether_type=IP,
                                       dst_port_start=ports.start_port,
                                       dst_port_end=ports.end_port)
                     policy.acl.append(policy.acl_line)
+
+    policy.add_fact('acl', policy.acl)
     return
-
-def format_result(policy):
-    """
-    Format the data collected into a dictionary to output JSON to the calling playbook
-    :param policy: A PolicySet() object
-    :return: 
-    """
-    catch_all_options = {1:'ALLOW', 2:'DROP'}              # TODO understand how to decode with protocol buffer
-    policy.result["ansible_facts"]['tenant'] = policy.tenant_name
-    policy.result["ansible_facts"]['catch_all'] = catch_all_options.get(policy.catch_all)
-    policy.result["ansible_facts"]['update_end_offset'] = policy.ending_offset_value
-    policy.result["ansible_facts"]['acl'] = policy.acl
-
-#
-# Ansible Imports
-#
-try:
-    from ansible_hacking import AnsibleModule              # Test
-except ImportError:
-    from ansible.module_utils.basic import AnsibleModule   # Production
-
 
 def main():
     """ 
+    Main Logic
     """
     module = AnsibleModule(
         argument_spec=dict(
             broker=dict(required=True),
             topic=dict(required=True),
-            timeout=dict(default=1000, type='int', required=False),
+            timeout=dict(default=2000, type='int', required=False),
             private_key=dict(default=KAFKA_PRIVATE_KEY, required=False),
             certificate_name=dict(default=KAFKA_CONSUMER_CA, required=False),
             cert_directory=dict(required=True),
@@ -343,41 +326,31 @@ def main():
         supports_check_mode=False
     )
 
-    # TODO need to support booleans in ansible-hacking
-    # if module.params.get('validate_certs') != 'no':
-    #    module.fail_json(msg='TODO: Validate certs not implemented')
-    # TODO verify cert_directory has a trailing '/'
-    debug('{}'.format(module.params))
+    # Basic checking of input parameters
+    if module.params.get('validate_certs'):
+        module.fail_json(msg='TODO: Validate certs not implemented')
 
-    input_data = create_consumer(module.params)               # Attach to the message bus, this is our INPUT data
+    if not module.params.get('cert_directory').endswith('/'):
+        module.params['cert_directory'] = '{}/'.format(module.params['cert_directory'])
 
-    db = []
-    db.append("All the topics available :{}".format(input_data.topics()))
-    db.append("Subscription:{}".format(input_data.subscription()))
-    db.append("Partitions for topic:{}".format(input_data.partitions_for_topic('Tnp-2')))
-    db.append("TopicPartitions:{}".format(input_data.assignment()))
-    db.append("Beginning offsets:{}".format(input_data.beginning_offsets(input_data.assignment())))
-    db.append("End offsets:{}".format(input_data.end_offsets(input_data.assignment())))
+    # Connect to the Kafka broker and retrieve a network policy
+    policy = PolicySet()                                      # Object to hold Network Policy for processing
+    input_data = create_consumer(module.params, policy)       # Attach to the message bus, this is our INPUT data
+    get_policy_update(policy, input_data)                     # Iterate over messages and locate a network policy
 
-    policy = PolicySet()                                   # Object to hold Network Policy for processing
-    # network_policy = get_policy_update(policy, input_data)        # Returned is discrete network policy, one unit of policy
-    get_policy_update(policy, input_data)
-    decode_policy(policy)
-    format_result(policy)
-    policy.result["ansible_facts"]['debug'] = db
+    if policy.buffer:                                         # Got a policy, decode it
+        decode_policy(policy)
+    else:
+        module.fail_json(msg='No messages returned from Kafka broker!')
+
+    debug('TODO process ending offset value: {}'.format(policy.update_end_offset))
+    policy.add_fact('update_end_offset', policy.update_end_offset)
+
     module.exit_json(changed=False, **policy.result)
-    #if network_policy.buffer:
-    #    decode_policy(network_policy)
-    #    format_result(network_policy)
-    #else:
-    #    module.fail_json(msg='No messages returned, topics: {}'.format(db))
-
-    #debug('TODO process ending offset value: {}'.format(network_policy.ending_offset_value))
-    #module.exit_json(changed=False, **network_policy.result)
 
 
 if __name__ == '__main__':
-    """ Logic for remote debugging with Pycharm Pro
+    """ Logic for remote debugging with Pycharm Pro, use SSH_CLIENT to derive the IP address of the laptop
     """
     if DEBUG:
         try:
@@ -385,6 +358,6 @@ if __name__ == '__main__':
         except ImportError:
             pass
         else:
-            import os     # os.getenv("SSH_CLIENT").split(" ")  ['192.168.56.1', '51406', '22']
+            import os
             pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
     main()

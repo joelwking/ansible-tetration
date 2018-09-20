@@ -56,7 +56,7 @@
     scope: tenant                                          # 'application-profile' or 'tenant'
     reverse_filter: no                                     # 'yes' or 'no' should filter be reversed?
     log: log                                               # Determines if the binding should be set to log
-    validate_certs: 'no'                                     # certificate verify
+    validate_certs: 'no'                                   # certificate verify
 
   tasks:
 #
