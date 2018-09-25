@@ -10,16 +10,19 @@
 #
 #      usage:  ./setup_tetration_sensor.yml  -e "PASSWORDS_DIR=$HOME/ansible/playbooks"
 #
-#      notes:
-#              Linux verson: CentOS-7-x86_64-Everything-1804.iso
-#              # - "{{ lookup('env','PASSWORDS_DIR') }}/passwords.yml"
+#              export ANSIBLE_LOG_PATH=/tmp/verify.txt
+#              ./setup_tetration_sensor.yml --tags check  -e "PASSWORDS_DIR=$HOME/ansible/playbooks"
+#              grep 'command: ' /tmp/verify.txt
 #
-#              # For human-readable output modify ansible.cfg statement stdout_callback = debug
+#      notes:
+#              Tested using Linux verson: CentOS-7-x86_64-Everything-1804.iso
+#
+#              For human-readable output modify ansible.cfg statement stdout_callback = debug
+#              and excute with -v
 #
 #      reference:
 #          Cisco Tetration Analytics Installation Guide  for the Software Agent
 #          https://www.cisco.com/c/dam/en/us/td/docs/data-center-analytics/tetration-analytics/sw/install/cta_install_guide_for_software_sensor_agents.pdf
-#
 #
 - name: Installs Tetration software agent
   hosts: TETRATION
@@ -30,7 +33,7 @@
     - "{{ PASSWORDS_DIR }}/passwords.yml"
 
   vars:
-    students: 1
+    students: 0
 
     download:
       dest_dir: "/tmp/tetration/"
@@ -38,7 +41,7 @@
         - {server: "ftp://{{ ftp.username }}:{{ ftp.password }}@10.255.40.101/SDN/images/tetration/", fn: "tet-sensor-2.3.1.41-1.el7-atctetration01.enforcer.x86_64.rpm"}
 
     commands:
-      check:
+      check:  # Checks if the deep visibility agent dependencies are met on RHEL, CentOS...
         - cat /etc/centos-release
         - uname -r
         - cat /etc/shells
@@ -55,12 +58,16 @@
         - rpm -qa | grep lsb
         - yum provides */lsb_release
         - rpm -qa | grep libpcap
+        - iptables --version
+        - ipset --version
+        - crontab -l
 
-      verification:
+      verification: # verifies the agent installation on RHEL, CentOS...
         - service tet-sensor status
         - service tet-enforcer status
         - ps aux | grep tet
         - rpm -qa | grep tet
+        - netstat -natp | grep -i tet
 
     packages:
       apt:
@@ -77,22 +84,25 @@
   tasks:
 
     - name: Setup determines package manager and distribution
-      debug:
-        msg:  "Package manager:{{ ansible_pkg_mgr }} Distro:{{ ansible_distribution }}"           # 'apt' or 'yum', 'CentOS', 'Ubuntu', etc.
+      debug:  # 'apt' or 'yum', 'CentOS', 'Ubuntu', etc.
+        msg:  "Package manager:{{ ansible_pkg_mgr }} Distro:{{ ansible_distribution }}"
 
     #
     #  CentOS
     #
     - name: Install Tetration software sensor
       block:
-
-        # For human-readable output modify ansible.cfg statement stdout_callback = debug
-        # and excute with -v
         - name: Optionally issue commands for pre-install check
           shell: "{{ item }}"
           with_items: "{{ commands.check }}"
           register: check
-        #  if needed {{ check.results}} is a list of each command, containing  "{{ item.cmd }} {{ item.stdout }}"
+          ignore_errors: True
+          tags: check
+
+        - debug:
+            msg: "command: {{ item.cmd }} value: {{ item.stdout }}"
+          with_items: "{{ check.results }}"
+          tags: check
 
         - name: Create a directory for the file(s)
           file:
@@ -125,11 +135,16 @@
             name: '*'
             state: latest
 
-        # For human-readable output modify ansible.cfg statement stdout_callback = debug
-        # and excute with -v
         - name: Issue commands for post-install check
           shell: "{{ item }}"
           with_items: "{{ commands.verification }}"
+          register: check
+          tags: post
+
+        - debug:
+            msg: "command: {{ item.cmd }} value: {{ item.stdout }}"
+          with_items: "{{ check.results }}"
+          tags: post
 
       when: ansible_pkg_mgr == 'yum'
       become: true
