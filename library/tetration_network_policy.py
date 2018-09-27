@@ -139,7 +139,8 @@ class PolicySet(object):
         self.buffer = None                                 # Network Policy buffer
         self.update_end_offset = None                      # The message offset of the UPDATE_END record
         self.acl = []                                      # Create an empty list to hold ACL lines
-        self.acl_line = dict(filter_name=None,             # tcp-135
+        self.acl_line = dict(action=None,                  # ALLOW or DROP
+                             filter_name=None,             # tcp-135
                              filter_descr=None,            # Intent ID: bf70c631367bf5eefba9c6d3aae8c9a0
                              entry_name=None,              # tcp-port_135
                              filter_entry_descr=None,      # blank
@@ -282,10 +283,9 @@ def get_policy_update(policy, input_data):
     return
 
 
-def decode_policy(policy):
+def decode_catch_all(policy):
     """
-    Decode the Network Policy, creating ACL lines to apply to a 'firewall'
-
+    Decode the Catch All policy
     :param policy: Object to store Network Policy for processing
     :return:
     """
@@ -293,14 +293,40 @@ def decode_policy(policy):
     policy.add_fact('tenant_name', tnp.tenant_name)
 
     for item in tnp.network_policy:
-
         policy.add_fact('catch_all', tetration_network_policy_pb2.CatchAllPolicy.Action.Name(item.catch_all.action))
+
+    return
+
+
+def decode_filters(policy):
+    """
+    Decode the Inventory Filters
+    :param policy: Object to store Network Policy for processing
+    :return:
+    """
+    tnp = policy.buffer.tenant_network_policy
+    # TODO add logic to decode inventory filters
+    policy.add_fact('filters', [])                         # Add empty list for now
+    return
+
+
+def decode_intents(policy):
+    """
+    Decode the Network Policy, creating ACL lines to apply to a 'firewall'
+
+    :param policy: Object to store Network Policy for processing
+    :return:
+    """
+    tnp = policy.buffer.tenant_network_policy
+
+    for item in tnp.network_policy:
         for intent in item.intents:                              # debug("Intent_id: %s" % intent.id)
             for proto in intent.flow_filter.protocol_and_ports:  # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
                     # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
                     protocol = tetration_network_policy_pb2.IPProtocol.Name(proto.protocol).lower()
                     policy.acl_line = dict(
+                                      action=tetration_network_policy_pb2.Intent.Action.Name(intent.action),
                                       filter_name="{}-{}".format(protocol, ports.start_port),
                                       filter_descr="Intent_id:{}".format(intent.id),
                                       entry_name="{}-port_{}".format(protocol, ports.start_port),
@@ -349,8 +375,9 @@ def main():
     get_policy_update(policy, input_data)                  # Iterate over messages and locate a network policy
 
     if policy.buffer:                                      # Got a policy, decode it
-        decode_policy(policy)
-        # TODO decode the InventoryFilterRecords
+        decode_intents(policy)                             # Intents
+        decode_catch_all(policy)                           # Catch_all and Tenant Name
+        decode_filters(policy)                             # InventoryFilterRecords
     else:
         module.fail_json(msg='No messages returned from Kafka broker!')
 
