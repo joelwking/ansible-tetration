@@ -126,6 +126,7 @@ SSL = 'SSL'                                                # must be capitalized
 IP = 'ip'                                                  # must be lower case for ACI filter/engry
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
+AUTOCOMMIT = True
 
 
 class PolicySet(object):
@@ -204,7 +205,7 @@ def create_consumer(args, policy):
                             api_version=API_VERSION,
                             bootstrap_servers=args.get('broker'),
                             auto_offset_reset='earliest',              # consume earliest available messages,
-                            enable_auto_commit=False,                  # don't commit offsets
+                            enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
                             consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
                             security_protocol=SSL,
                             ssl_context=create_ssl_context(args)
@@ -381,7 +382,7 @@ def main():
     else:
         module.fail_json(msg='No messages returned from Kafka broker!')
 
-    debug('TODO process ending offset value: {}'.format(policy.update_end_offset))
+    input_data.close(autocommit=AUTOCOMMIT)                # TODO verify autoommit
     policy.add_fact('update_end_offset', policy.update_end_offset)
 
     module.exit_json(changed=False, **policy.result)
