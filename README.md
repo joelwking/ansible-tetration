@@ -11,5 +11,8 @@ The focus of the session illustrates using Ansible to facilitate installation of
 
 For a description of the session, refer to the [session](https://agenda.fest.ansible.com/SessionDetail.aspx?id=489947) detail link.
 
+## Presentation
+The presentation slides are available on [Slideshare](https://www.slideshare.net/joelwking/using-ansible-tower-to-implement-security-policies-and-telemetry-streaming-for-hybrid-clouds).
+
 ## Author
 Joel W. King @joelwking
