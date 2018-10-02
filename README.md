@@ -14,5 +14,8 @@ For a description of the session, refer to the [session](https://agenda.fest.ans
 ## Presentation
 The presentation slides are available on [Slideshare](https://www.slideshare.net/joelwking/using-ansible-tower-to-implement-security-policies-and-telemetry-streaming-for-hybrid-clouds).
 
+## Blog
+Refer to the [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post for a summary of the concepts presented in this session at the live event.
+
 ## Author
 Joel W. King @joelwking
