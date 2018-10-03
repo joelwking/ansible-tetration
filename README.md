@@ -17,5 +17,8 @@ The presentation slides are available on [Slideshare](https://www.slideshare.net
 ## Blog
 Refer to the [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post for a summary of the concepts presented in this session at the live event.
 
+## Code Exchange
+Cisco DevNet Code exchange [links](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration) to this repository.
+
 ## Author
-Joel W. King @joelwking
+Joel W. King joel.king@wwt.com GitHub: @joelwking Principal Architect at World Wide Technology
