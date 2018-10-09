@@ -97,6 +97,7 @@ EXAMPLES = '''
 #
 import ssl
 import sys
+import ipaddress
 #
 #  Application Imports
 #
@@ -302,12 +303,34 @@ def decode_catch_all(policy):
 def decode_filters(policy):
     """
     Decode the Inventory Filters
+    
+    use ipaddress.ip_address("4\330\201\003").__str__() to convert binary IP addresses 
+    to dotted decimal string, u'52.216.129.3' or u'2001:0:9d38:90d7:3cc4:271:f502:146a'
+    
     :param policy: Object to store Network Policy for processing
     :return:
     """
     tnp = policy.buffer.tenant_network_policy
-    # TODO add logic to decode inventory filters
-    policy.add_fact('filters', [])                         # Add empty list for now
+    inventory_filters = []
+    for item in tnp.network_policy:
+        for inventory_filter in item.inventory_filters:
+            id = inventory_filter.id
+            query = inventory_filter.query
+            inventory_items = []
+            for inventory_item in inventory_filter.inventory_items:
+                try:
+                    start_ip_addr = ipaddress.ip_address(inventory_item.address_range.start_ip_addr).__str__()
+                    end_ip_addr = ipaddress.ip_address(inventory_item.address_range.end_ip_addr).__str__()
+                except:
+                    # TODO clean up this error handling
+                    start_ip_addr = 'BAD' + str(inventory_item.address_range.start_ip_addr)
+                    end_ip_addr = 'BAD' + str(inventory_item.address_range.start_ip_addr)
+                addr_family = tetration_network_policy_pb2.IPAddressFamily.Name(inventory_item.address_range.addr_family)
+                inventory_items.append(dict(start_ip_addr=start_ip_addr, end_ip_addr=end_ip_addr, addr_family=addr_family))
+
+            inventory_filters.append(dict(id=id, query=query, inventory_items=inventory_items))
+
+    policy.add_fact('inventory_filters', inventory_filters)
     return
 
 
