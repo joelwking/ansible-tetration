@@ -1,0 +1,46 @@
+#!/usr/bin/ansible-playbook
+---
+#
+#      Copyright (c) 2018 World Wide Technology, Inc.
+#      All rights reserved.
+#
+#      author: joel.king@wwt.com GitHub/GitLab @joelwking
+#
+#      description: 
+#
+#        This playbook retrieves network policy from the Tetration Network Policy Publisher
+#        and creates a file to view the results.
+#
+#      usage:
+#
+#        ./view_network_policy.yml -e "cert_directory=producer-tnp-2.cert ofile=/tmp/vnp.json"
+#
+#
+- name: View Tetration Network Policy
+  hosts:  localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    #
+    #  These are default values which can be overridden at run time with '-e'
+    #
+    cert_directory: producer-tnp-2.cert                    # directory name of tetration certificates
+    validate_certs: 'no'                                   # certificate verify
+    ofile: '{{ playbook_dir }}/files/{{ view_network_policy.json }}'
+
+  tasks:
+
+    - name: Tetration Network Policy
+      tetration_network_policy:
+        broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+        topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+        cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
+        validate_certs: '{{ validate_certs }}'
+      register: tnp
+
+    - name: Write the policy to a file
+      copy:
+        content: '{{ tnp }}'
+        dest: '{{ ofile }}'
+        mode: 0644

@@ -4,12 +4,12 @@
 #      Copyright (c) 2018 World Wide Technology, Inc.
 #      All rights reserved.
 #
-#      author: @joelwking
+#      author: joel.king@wwt.com GitHub/GitLab @joelwking
 #
 #      description: 
-#        This playbook uses network policy from Tetration,
-#      ...
-#        which is used to create Filters and Filter entries in ACI.
+#
+#        This playbook retrieves network policy from the Tetration Network Policy Publisher
+#        feature. The policy returned is used to create Filters and Filter entries in ACI.
 #
 #      usage:
 #
