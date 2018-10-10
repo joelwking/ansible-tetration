@@ -115,7 +115,7 @@ except ImportError:
 # TODO eliminate these path appends
 sys.path.append('/home/administrator/tetration/ansible-tetration/library')
 sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
-import tetration_network_policy_pb2                        # TODO import as to create shorter name
+import tetration_network_policy_pb2 as tnp_pb2
 #
 # Constants
 #
@@ -247,8 +247,8 @@ def get_policy_update(policy, input_data):
     """
     found_start = False                                    # skip all the messages until the next UPDATE_START message.
 
-    protobuf = tetration_network_policy_pb2.KafkaUpdate()  # Create object for Tetration Network Policy
-    tmp_pbuf = tetration_network_policy_pb2.KafkaUpdate()  # Work area for decoding the protocol buffer type.
+    protobuf = tnp_pb2.KafkaUpdate()                       # Create object for Tetration Network Policy
+    tmp_pbuf = tnp_pb2.KafkaUpdate()                       # Work area for decoding the protocol buffer type.
 
     for count, message in enumerate(input_data):
         debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)))
@@ -295,7 +295,7 @@ def decode_catch_all(policy):
     policy.add_fact('tenant_name', tnp.tenant_name)
 
     for item in tnp.network_policy:
-        policy.add_fact('catch_all', tetration_network_policy_pb2.CatchAllPolicy.Action.Name(item.catch_all.action))
+        policy.add_fact('catch_all', tnp_pb2.CatchAllPolicy.Action.Name(item.catch_all.action))
 
     return
 
@@ -321,7 +321,7 @@ def decode_filters(policy):
             for inventory_item in inventory_filter.inventory_items:
                 start_ip_addr = format_ip(inventory_item.address_range.start_ip_addr)
                 end_ip_addr = format_ip(inventory_item.address_range.end_ip_addr)
-                addr_family = tetration_network_policy_pb2.IPAddressFamily.Name(inventory_item.address_range.addr_family)
+                addr_family = tnp_pb2.IPAddressFamily.Name(inventory_item.address_range.addr_family)
                 inventory_items.append(dict(start_ip_addr=start_ip_addr, end_ip_addr=end_ip_addr, addr_family=addr_family))
 
             inventory_filters.append(dict(id=id, query=query, inventory_items=inventory_items))
@@ -359,9 +359,9 @@ def decode_intents(policy):
             for proto in intent.flow_filter.protocol_and_ports:  # debug("protocol:%s " % (proto.protocol))
                 for ports in proto.port_ranges:
                     # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
-                    protocol = tetration_network_policy_pb2.IPProtocol.Name(proto.protocol).lower()
+                    protocol = tnp_pb2.IPProtocol.Name(proto.protocol).lower()
                     policy.acl_line = dict(
-                                      action=tetration_network_policy_pb2.Intent.Action.Name(intent.action),
+                                      action=tnp_pb2.Intent.Action.Name(intent.action),
                                       filter_name="{}-{}".format(protocol, ports.start_port),
                                       filter_descr="Intent_id:{}".format(intent.id),
                                       entry_name="{}-port_{}".format(protocol, ports.start_port),
