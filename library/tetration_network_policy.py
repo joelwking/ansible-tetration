@@ -140,6 +140,8 @@ class PolicySet(object):
         self.result = dict(ansible_facts={})               # Empty dictionary to output JSON to Ansible
         self.buffer = None                                 # Network Policy buffer
         self.update_end_offset = None                      # The message offset of the UPDATE_END record
+        
+        # TODO, be consistant in between intents and inventory filters on where you store your variables
         self.acl = []                                      # Create an empty list to hold ACL lines
         self.acl_line = dict(action=None,                  # ALLOW or DROP
                              filter_name=None,             # tcp-135
@@ -171,6 +173,21 @@ def debug(msg):
     """
     if DEBUG:
         print ": {}".format(msg)
+
+
+def format_ip(ip_address):
+    """
+    Convert IP address from integer to string,
+    The value has been observed to be a null string which will throw and exception
+    
+    :param ip_address: integer 
+    :return: ip_address: dotted decimal IP v4 or IP v6 address
+    """
+    try:
+        ip_address = ipaddress.ip_address(ip_address).__str__()
+    except:
+        pass
+    return ip_address
 
 
 def create_ssl_context(args):
@@ -288,6 +305,7 @@ def get_policy_update(policy, input_data):
 def decode_catch_all(policy):
     """
     Decode the Catch All policy
+
     :param policy: Object to store Network Policy for processing
     :return:
     """
@@ -315,13 +333,8 @@ def decode_filters(policy):
 
     for item in tnp.network_policy:
         for inventory_filter in item.inventory_filters:
-            #filter_id = inventory_filter.id
-            #filter_query = inventory_filter.query
             invy_items = []
             for invy_item in inventory_filter.inventory_items:
-                #start_ip_addr = format_ip(invy_item.address_range.start_ip_addr)
-                #end_ip_addr = format_ip(invy_item.address_range.end_ip_addr)
-                #addr_family = tnp_pb2.IPAddressFamily.Name(invy_item.address_range.addr_family)
                 invy_items.append(dict(start_ip_addr=format_ip(invy_item.address_range.start_ip_addr), 
                                        end_ip_addr=format_ip(invy_item.address_range.end_ip_addr), 
                                        addr_family=tnp_pb2.IPAddressFamily.Name(invy_item.address_range.addr_family)))
@@ -334,24 +347,9 @@ def decode_filters(policy):
     return
 
 
-def format_ip(ip_address):
-    """
-    Convert IP address from integer to string,
-    The value has been observed to be a null string which will throw and exception
-    
-    :param ip_address: integer 
-    :return: ip_address: dotted decimal IP v4 or IP v6 address
-    """
-    try:
-        ip_address = ipaddress.ip_address(ip_address).__str__()
-    except:
-        pass
-    return ip_address
-
-
 def decode_intents(policy):
     """
-    Decode the Network Policy, creating ACL lines to apply to a 'firewall'
+    Decode the Intents, creating ACL lines to apply to a 'firewall'
 
     :param policy: Object to store Network Policy for processing
     :return:
@@ -385,9 +383,15 @@ def main():
     """
     Main Logic
     First do some basic checking of input parameters, create an object to hold the Network Policy for
-    processing. Iterate over the messages and locate the starting message for a network policy, and
-    return when the ending message is located. We decode the policy and store the fields of interest
-    as ansbile_facts.
+    processing. Iterate over the Kafka messages and locate the starting message for a network policy, and
+    return when the ending message is located. 
+
+    Network Policy is broken into three parts:
+        Catch All Policy
+        Intents
+        Inventory Filters
+
+    We decode the three sections of the policy and store the fields of interest as ansbile_facts.        
     """
     module = AnsibleModule(
         argument_spec=dict(
@@ -416,7 +420,7 @@ def main():
     if policy.buffer:                                      # Got a policy, decode it
         decode_intents(policy)                             # Intents
         decode_catch_all(policy)                           # Catch_all and Tenant Name
-        decode_filters(policy)                             # InventoryFilterRecords
+        decode_filters(policy)                             # Inventory Filters
     else:
         module.fail_json(msg='No messages returned from Kafka broker!')
 
