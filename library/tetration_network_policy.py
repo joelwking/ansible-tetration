@@ -312,19 +312,15 @@ def decode_filters(policy):
     """
     tnp = policy.buffer.tenant_network_policy
     inventory_filters = []
+
     for item in tnp.network_policy:
         for inventory_filter in item.inventory_filters:
             id = inventory_filter.id
             query = inventory_filter.query
             inventory_items = []
             for inventory_item in inventory_filter.inventory_items:
-                try:
-                    start_ip_addr = ipaddress.ip_address(inventory_item.address_range.start_ip_addr).__str__()
-                    end_ip_addr = ipaddress.ip_address(inventory_item.address_range.end_ip_addr).__str__()
-                except:
-                    # TODO clean up this error handling
-                    start_ip_addr = 'BAD' + str(inventory_item.address_range.start_ip_addr)
-                    end_ip_addr = 'BAD' + str(inventory_item.address_range.start_ip_addr)
+                start_ip_addr = format_ip(inventory_item.address_range.start_ip_addr)
+                end_ip_addr = format_ip(inventory_item.address_range.end_ip_addr)
                 addr_family = tetration_network_policy_pb2.IPAddressFamily.Name(inventory_item.address_range.addr_family)
                 inventory_items.append(dict(start_ip_addr=start_ip_addr, end_ip_addr=end_ip_addr, addr_family=addr_family))
 
@@ -332,6 +328,21 @@ def decode_filters(policy):
 
     policy.add_fact('inventory_filters', inventory_filters)
     return
+
+
+def format_ip(ip_address):
+    """
+    Convert IP address from integer to string,
+    The value has been observed to be a null string which will throw and exception
+    
+    :param ip_address: integer 
+    :return: ip_address: dotted decimal IP v4 or IP v6 address
+    """
+    try:
+        ip_address = ipaddress.ip_address(ip_address).__str__()
+    except:
+        pass
+    return ip_address
 
 
 def decode_intents(policy):
