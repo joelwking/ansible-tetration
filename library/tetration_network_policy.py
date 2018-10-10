@@ -315,16 +315,20 @@ def decode_filters(policy):
 
     for item in tnp.network_policy:
         for inventory_filter in item.inventory_filters:
-            id = inventory_filter.id
-            query = inventory_filter.query
-            inventory_items = []
-            for inventory_item in inventory_filter.inventory_items:
-                start_ip_addr = format_ip(inventory_item.address_range.start_ip_addr)
-                end_ip_addr = format_ip(inventory_item.address_range.end_ip_addr)
-                addr_family = tnp_pb2.IPAddressFamily.Name(inventory_item.address_range.addr_family)
-                inventory_items.append(dict(start_ip_addr=start_ip_addr, end_ip_addr=end_ip_addr, addr_family=addr_family))
+            #filter_id = inventory_filter.id
+            #filter_query = inventory_filter.query
+            invy_items = []
+            for invy_item in inventory_filter.inventory_items:
+                #start_ip_addr = format_ip(invy_item.address_range.start_ip_addr)
+                #end_ip_addr = format_ip(invy_item.address_range.end_ip_addr)
+                #addr_family = tnp_pb2.IPAddressFamily.Name(invy_item.address_range.addr_family)
+                invy_items.append(dict(start_ip_addr=format_ip(invy_item.address_range.start_ip_addr), 
+                                       end_ip_addr=format_ip(invy_item.address_range.end_ip_addr), 
+                                       addr_family=tnp_pb2.IPAddressFamily.Name(invy_item.address_range.addr_family)))
 
-            inventory_filters.append(dict(id=id, query=query, inventory_items=inventory_items))
+            inventory_filters.append(dict(id=inventory_filter.id, 
+                                          query=inventory_filter.query, 
+                                          inventory_items=invy_items))
 
     policy.add_fact('inventory_filters', inventory_filters)
     return
