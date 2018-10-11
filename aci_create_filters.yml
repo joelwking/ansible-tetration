@@ -57,6 +57,7 @@
     reverse_filter: no                                     # 'yes' or 'no' should filter be reversed?
     log: log                                               # Determines if the binding should be set to log
     validate_certs: 'no'                                   # certificate verify
+    ether_type: 'ip'                                       # required field, lower case
 
   tasks:
 #
@@ -97,9 +98,9 @@
         state: '{{ desired_state }}'
         #
         tenant: '{{ tenant }}'
-        filter: '{{ item.filter_name }}'
-        description: '{{ item.filter_descr }}'
-      with_items: '{{ tnp.ansible_facts.acl }}'
+        filter: '{{ item.ip_protocol }}_{{ item.dst_port_start }}'
+        description: ' '
+      loop: '{{ tnp.ansible_facts.acl }}'
       tags: filter
 
     - name: Add the filter entry to the filter
@@ -111,14 +112,14 @@
         state: '{{ desired_state }}'
         #
         tenant: '{{ tenant }}'
-        filter: '{{ item.filter_name }}'                   # Name of Filter that the entry should belong to.
-        entry: '{{ item.entry_name }}'                     # Name of the filter entry.
-        description: '{{ item.filter_entry_descr }}'       # Description of the filter entry.
-        ether_type: '{{ item.ether_type }}'                # Ethernet type, IP, arp, etc.
-        ip_protocol: '{{ item.ip_protocol }}'              # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
-        dst_port_start: '{{ item.dst_port_start }}'        # Starting L4 port number.
-        dst_port_end: '{{ item.dst_port_end }}'            # Ending L4 port number.
-      with_items: '{{ tnp.ansible_facts.acl }}'
-      when: desired_state == "present"                     # Deleting the filter deletes the entry
+        filter: '{{ item.ip_protocol }}_{{ item.dst_port_start }}'  # Name of Filter that the entry should belong to
+        entry: 'port_{{ item.dst_port_start }}'                     # Name of the filter entry
+        description: 'Intent:{{ item.intent_id }} consumer/provider filtr:{{ item.consumer_filter_id }}/{{ item.provider_filter_id }}'
+        ether_type: '{{ ether_type }}'                              # Ethernet type, IP, arp, etc.
+        ip_protocol: '{{ item.ip_protocol }}'                       # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
+        dst_port_start: '{{ item.dst_port_start }}'                 # Starting L4 port number
+        dst_port_end: '{{ item.dst_port_end }}'                     # Ending L4 port number
+      loop: '{{ tnp.ansible_facts.acl }}'
+      when: desired_state == "present"                              # Deleting the filter deletes the entry
       tags: entry
 
