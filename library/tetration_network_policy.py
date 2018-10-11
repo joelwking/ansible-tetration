@@ -123,7 +123,6 @@ DEBUG = False
 TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
 API_VERSION = (0, 9)                                       # Required by KafkaConsumer, refer to SDK docs
 SSL = 'SSL'                                                # must be capitalized
-IP = 'ip'                                                  # must be lower case for ACI filter/engry
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
 AUTOCOMMIT = True
@@ -165,15 +164,17 @@ def debug(msg):
 def format_ip(ip_address):
     """
     Convert IP address from integer to string,
-    The value has been observed to be a null string which will throw and exception
+    The value has been observed to be a null string which will throw exception
+    ipaddress.AddressValueError '' does not appear to be an IPv4 or IPv6 address.
+    Did you pass in a bytes (str in Python 2) instead of a unicode object?
 
     :param ip_address: integer
-    :return: ip_address: dotted decimal IP v4 or IP v6 address
+    :return: ip_address: dotted decimal IPv4 or IPv6 address
     """
     try:
         ip_address = ipaddress.ip_address(ip_address).__str__()
-    except:
-        pass
+    except ipaddress.AddressValueError:
+        pass                                               # Invalid IPv4 or IPv6 address.
     return ip_address
 
 
@@ -350,17 +351,14 @@ def decode_intents(policy):
         for intent in item.intents:
             for proto in intent.flow_filter.protocol_and_ports:
                 for ports in proto.port_ranges:
-                    protocol = tnp_pb2.IPProtocol.Name(proto.protocol).lower()
                     acl_line = dict(
-                        action=tnp_pb2.Intent.Action.Name(intent.action),            # ALLOW or DROP
-                        filter_name="{}-{}".format(protocol, ports.start_port),      # tcp-135
-                        filter_descr="Intent_id:{}".format(intent.id),               # Intent ID: bf70c631367bf5eefb
-                        entry_name="{}-port_{}".format(protocol, ports.start_port),  # tcp-port_135
-                        filter_entry_descr="",                                       # blank
-                        ip_protocol=protocol,                                        # tcp   must be lower case for ACI
-                        ether_type=IP,                                               # ip    must be lower case for ACI
-                        dst_port_start=ports.start_port,                             # 135
-                        dst_port_end=ports.end_port                                  # 135
+                        action=tnp_pb2.Intent.Action.Name(intent.action),             # ALLOW or DROP
+                        intent_id=intent.id,
+                        consumer_filter_id=intent.flow_filter.consumer_filter_id,
+                        provider_filter_id=intent.flow_filter.provider_filter_id,
+                        ip_protocol=tnp_pb2.IPProtocol.Name(proto.protocol).lower(),  # tcp must be lower case for ACI
+                        dst_port_start=ports.start_port,                              # 135
+                        dst_port_end=ports.end_port                                   # 135
                     )
 
                     acl.append(acl_line)
