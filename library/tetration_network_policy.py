@@ -140,21 +140,9 @@ class PolicySet(object):
         self.buffer = None                                 # Network Policy buffer
         self.update_end_offset = None                      # The message offset of the UPDATE_END record
 
-        # TODO, be consistant in between intents and inventory filters on where you store your variables
-        self.acl = []                                      # Create an empty list to hold ACL lines
-        self.acl_line = dict(action=None,                  # ALLOW or DROP
-                             filter_name=None,             # tcp-135
-                             filter_descr=None,            # Intent ID: bf70c631367bf5eefba9c6d3aae8c9a0
-                             entry_name=None,              # tcp-port_135
-                             filter_entry_descr=None,      # blank
-                             ip_protocol=None,             # tcp   must be lower case for ACI
-                             ether_type=None,              # ip    must be lower case for ACI
-                             dst_port_start=None,          # 135
-                             dst_port_end=None)            # 135
-
     def add_fact(self, key, value):
         """
-        Add a key and value to the results returned to the playbook
+        Add a key and value to the results (ansible_facts) returned to the playbook from this module
 
         :param key: Add this key to ansible_facts
         :param value: Value for the specified key
@@ -356,27 +344,28 @@ def decode_intents(policy):
     :return:
     """
     tnp = policy.buffer.tenant_network_policy
+    acl = []                                               # Empty list to hold ACL lines
 
     for item in tnp.network_policy:
         for intent in item.intents:
             for proto in intent.flow_filter.protocol_and_ports:
                 for ports in proto.port_ranges:
                     protocol = tnp_pb2.IPProtocol.Name(proto.protocol).lower()
-                    policy.acl_line = dict(
-                        action=tnp_pb2.Intent.Action.Name(intent.action),
-                        filter_name="{}-{}".format(protocol, ports.start_port),
-                        filter_descr="Intent_id:{}".format(intent.id),
-                        entry_name="{}-port_{}".format(protocol, ports.start_port),
-                        filter_entry_descr="",
-                        ip_protocol=protocol,
-                        ether_type=IP,
-                        dst_port_start=ports.start_port,
-                        dst_port_end=ports.end_port
+                    acl_line = dict(
+                        action=tnp_pb2.Intent.Action.Name(intent.action),            # ALLOW or DROP
+                        filter_name="{}-{}".format(protocol, ports.start_port),      # tcp-135
+                        filter_descr="Intent_id:{}".format(intent.id),               # Intent ID: bf70c631367bf5eefb
+                        entry_name="{}-port_{}".format(protocol, ports.start_port),  # tcp-port_135
+                        filter_entry_descr="",                                       # blank
+                        ip_protocol=protocol,                                        # tcp   must be lower case for ACI
+                        ether_type=IP,                                               # ip    must be lower case for ACI
+                        dst_port_start=ports.start_port,                             # 135
+                        dst_port_end=ports.end_port                                  # 135
                     )
 
-                    policy.acl.append(policy.acl_line)
+                    acl.append(acl_line)
 
-    policy.add_fact('acl', policy.acl)
+    policy.add_fact('acl', acl)
     return
 
 
