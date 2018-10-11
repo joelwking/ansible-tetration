@@ -121,8 +121,7 @@ import tetration_network_policy_pb2 as tnp_pb2
 #
 DEBUG = False
 TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
-API_VERSION = (0,9)                                        # Required by KafkaConsumer, refer to
-                                                           # https://media.readthedocs.org/pdf/kafka-python/master/kafka-python.pdf
+API_VERSION = (0, 9)                                       # Required by KafkaConsumer, refer to SDK docs
 SSL = 'SSL'                                                # must be capitalized
 IP = 'ip'                                                  # must be lower case for ACI filter/engry
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
@@ -140,7 +139,7 @@ class PolicySet(object):
         self.result = dict(ansible_facts={})               # Empty dictionary to output JSON to Ansible
         self.buffer = None                                 # Network Policy buffer
         self.update_end_offset = None                      # The message offset of the UPDATE_END record
-        
+
         # TODO, be consistant in between intents and inventory filters on where you store your variables
         self.acl = []                                      # Create an empty list to hold ACL lines
         self.acl_line = dict(action=None,                  # ALLOW or DROP
@@ -179,8 +178,8 @@ def format_ip(ip_address):
     """
     Convert IP address from integer to string,
     The value has been observed to be a null string which will throw and exception
-    
-    :param ip_address: integer 
+
+    :param ip_address: integer
     :return: ip_address: dotted decimal IP v4 or IP v6 address
     """
     try:
@@ -202,9 +201,11 @@ def create_ssl_context(args):
     :return: ssl context
     """
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ctx.load_cert_chain("{}{}".format(args['cert_directory'], args['certificate_name']),
-                        keyfile="{}{}".format(args['cert_directory'], args['private_key']),
-                        password=None)
+    ctx.load_cert_chain(
+        "{}{}".format(args['cert_directory'], args['certificate_name']),
+        keyfile="{}{}".format(args['cert_directory'], args['private_key']),
+        password=None
+    )
     ctx.verify_mode = ssl.CERT_NONE                        # TODO Enable verification
     return ctx
 
@@ -220,14 +221,14 @@ def create_consumer(args, policy):
     :return: KafkaConsumer object, messages from the message bus for processing
     """
     consumer = KafkaConsumer(args.get('topic'),
-                            api_version=API_VERSION,
-                            bootstrap_servers=args.get('broker'),
-                            auto_offset_reset='earliest',              # consume earliest available messages,
-                            enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
-                            consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
-                            security_protocol=SSL,
-                            ssl_context=create_ssl_context(args)
-                            )
+                             api_version=API_VERSION,
+                             bootstrap_servers=args.get('broker'),
+                             auto_offset_reset='earliest',              # consume earliest available messages,
+                             enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
+                             consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
+                             security_protocol=SSL,
+                             ssl_context=create_ssl_context(args)
+                             )
 
     # Returned values are of type Set
     msg = ["All the topics available :{}".format(consumer.topics()),
@@ -321,10 +322,10 @@ def decode_catch_all(policy):
 def decode_filters(policy):
     """
     Decode the Inventory Filters
-    
-    use ipaddress.ip_address("4\330\201\003").__str__() to convert binary IP addresses 
+
+    ipaddress.ip_address("4\330\201\003").__str__() convertx binary IPv4/IPv6 addresses
     to dotted decimal string, u'52.216.129.3' or u'2001:0:9d38:90d7:3cc4:271:f502:146a'
-    
+
     :param policy: Object to store Network Policy for processing
     :return:
     """
@@ -335,12 +336,12 @@ def decode_filters(policy):
         for inventory_filter in item.inventory_filters:
             invy_items = []
             for invy_item in inventory_filter.inventory_items:
-                invy_items.append(dict(start_ip_addr=format_ip(invy_item.address_range.start_ip_addr), 
-                                       end_ip_addr=format_ip(invy_item.address_range.end_ip_addr), 
+                invy_items.append(dict(start_ip_addr=format_ip(invy_item.address_range.start_ip_addr),
+                                       end_ip_addr=format_ip(invy_item.address_range.end_ip_addr),
                                        addr_family=tnp_pb2.IPAddressFamily.Name(invy_item.address_range.addr_family)))
 
-            inventory_filters.append(dict(id=inventory_filter.id, 
-                                          query=inventory_filter.query, 
+            inventory_filters.append(dict(id=inventory_filter.id,
+                                          query=inventory_filter.query,
                                           inventory_items=invy_items))
 
     policy.add_fact('inventory_filters', inventory_filters)
@@ -357,22 +358,22 @@ def decode_intents(policy):
     tnp = policy.buffer.tenant_network_policy
 
     for item in tnp.network_policy:
-        for intent in item.intents:                              # debug("Intent_id: %s" % intent.id)
-            for proto in intent.flow_filter.protocol_and_ports:  # debug("protocol:%s " % (proto.protocol))
+        for intent in item.intents:
+            for proto in intent.flow_filter.protocol_and_ports:
                 for ports in proto.port_ranges:
-                    # debug("{} protocol:{} ports:{} {}".format(intent.id, ProtocolMap().get_keyword(proto.protocol), ports.end_port, ports.start_port))
                     protocol = tnp_pb2.IPProtocol.Name(proto.protocol).lower()
                     policy.acl_line = dict(
-                                      action=tnp_pb2.Intent.Action.Name(intent.action),
-                                      filter_name="{}-{}".format(protocol, ports.start_port),
-                                      filter_descr="Intent_id:{}".format(intent.id),
-                                      entry_name="{}-port_{}".format(protocol, ports.start_port),
-                                      filter_entry_descr="",
-                                      ip_protocol=protocol,
-                                      ether_type=IP,
-                                      dst_port_start=ports.start_port,
-                                      dst_port_end=ports.end_port
-                                      )
+                        action=tnp_pb2.Intent.Action.Name(intent.action),
+                        filter_name="{}-{}".format(protocol, ports.start_port),
+                        filter_descr="Intent_id:{}".format(intent.id),
+                        entry_name="{}-port_{}".format(protocol, ports.start_port),
+                        filter_entry_descr="",
+                        ip_protocol=protocol,
+                        ether_type=IP,
+                        dst_port_start=ports.start_port,
+                        dst_port_end=ports.end_port
+                    )
+
                     policy.acl.append(policy.acl_line)
 
     policy.add_fact('acl', policy.acl)
@@ -384,14 +385,14 @@ def main():
     Main Logic
     First do some basic checking of input parameters, create an object to hold the Network Policy for
     processing. Iterate over the Kafka messages and locate the starting message for a network policy, and
-    return when the ending message is located. 
+    return when the ending message is located.
 
     Network Policy is broken into three parts:
         Catch All Policy
         Intents
         Inventory Filters
 
-    We decode the three sections of the policy and store the fields of interest as ansbile_facts.        
+    We decode the three sections of the policy and store the fields of interest as ansbile_facts.
     """
     module = AnsibleModule(
         argument_spec=dict(
