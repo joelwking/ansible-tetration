@@ -122,6 +122,7 @@ import tetration_network_policy_pb2 as tnp_pb2
 DEBUG = False
 TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
 API_VERSION = (0, 9)                                       # Required by KafkaConsumer, refer to SDK docs
+CLIENT_ID = 'NETWORK_POLICY'                               # Identifies this client, server side logging
 SSL = 'SSL'                                                # must be capitalized
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
@@ -212,6 +213,7 @@ def create_consumer(args, policy):
     consumer = KafkaConsumer(args.get('topic'),
                              api_version=API_VERSION,
                              bootstrap_servers=args.get('broker'),
+                             client_id=CLIENT_ID,                       # name passed to servers for identification
                              auto_offset_reset='earliest',              # consume earliest available messages,
                              enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
                              consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
@@ -379,7 +381,7 @@ def main():
         Intents
         Inventory Filters
 
-    We decode the three sections of the policy and store the fields of interest as ansbile_facts.
+    We decode the three sections of the policy and store the fields of interest as ansible_facts.
     """
     module = AnsibleModule(
         argument_spec=dict(
