@@ -107,6 +107,7 @@ from kafka import KafkaConsumer
 #
 try:
     from ansible_hacking import AnsibleModule              # Test
+    PYCHARM = True
 except ImportError:
     from ansible.module_utils.basic import AnsibleModule   # Production
 #
@@ -423,12 +424,13 @@ def main():
 if __name__ == '__main__':
     """ Logic for remote debugging with Pycharm Pro, use SSH_CLIENT to derive the IP address of the laptop
     """
-    if DEBUG:
-        try:
-            import pydevd
-        except ImportError:
-            pass
-        else:
-            import os
-            pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
+    try:
+        PYCHARM
+    except NameError:
+        pass
+    else:
+        import pydevd
+        import os
+        pydevd.settrace(os.getenv("SSH_CLIENT").split(" ")[0], stdoutToServer=True, stderrToServer=True)
+
     main()
