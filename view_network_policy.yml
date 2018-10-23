@@ -27,7 +27,7 @@
     #
     cert_directory: producer-tnp-2.cert                    # directory name of tetration certificates
     validate_certs: 'no'                                   # certificate verify
-    ofile: '{{ playbook_dir }}/files/{{ view_network_policy.json }}'
+    ofile: '{{ playbook_dir }}/files/view_network_policy.json'
 
   tasks:
 
