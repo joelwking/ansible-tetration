@@ -39,6 +39,11 @@ options:
             - "topic-<root_scope_id> e.g. Tnp-1"
         required: true
 
+    start_at_offset:
+        description:
+            - "Begin looking at the specified offset number for UPDATE_START messages. Primarily a debugging tool."
+        required: false
+        
     timeout:
         description:
             - KafkaConsumer, consumer_timeout_ms, StopIteration if no message after 'n' ms.
@@ -140,6 +145,7 @@ class PolicySet(object):
         self.result = dict(ansible_facts={})               # Empty dictionary to output JSON to Ansible
         self.buffer = None                                 # Network Policy buffer
         self.update_end_offset = None                      # The message offset of the UPDATE_END record
+        self.start_at_offset = None                        # Optionally begin processing at specified offset
 
     def add_fact(self, key, value):
         """
@@ -233,6 +239,8 @@ def create_consumer(args, policy):
     policy.add_fact('beginning_offsets', str(consumer.beginning_offsets(consumer.assignment())))
     policy.add_fact('end_offsets', str(consumer.end_offsets(consumer.assignment())))
 
+    policy.start_at_offset = args.get('start_at_offset')
+    policy.add_fact('start_at_offset', policy.start_at_offset)
     return consumer
 
 
@@ -262,6 +270,9 @@ def get_policy_update(policy, input_data):
 
     for count, message in enumerate(input_data):
         debug("count:%d message_offset:%d len(value):%s" % (count, message.offset, len(message.value)))
+        if message.offset < policy.start_at_offset:        # TODO continue to debug message arrival HERE
+            continue
+
         tmp_pbuf.ParseFromString(message.value)            # Load the message value into the protocol buffer
 
         if tmp_pbuf.type > 2:
@@ -366,7 +377,7 @@ def decode_intents(policy):
 
                     acl.append(acl_line)
 
-    policy.add_fact('acl', acl)
+    policy.add_fact('intents', acl)
     return
 
 
@@ -389,6 +400,7 @@ def main():
             broker=dict(required=True),
             topic=dict(required=True),
             timeout=dict(default=2000, type='int', required=False),
+            start_at_offset=dict(default=0, type='int', required=False),
             private_key=dict(default=KAFKA_PRIVATE_KEY, required=False),
             certificate_name=dict(default=KAFKA_CONSUMER_CA, required=False),
             cert_directory=dict(required=True),

@@ -28,6 +28,7 @@
     cert_directory: producer-tnp-2.cert                    # directory name of tetration certificates
     validate_certs: 'no'                                   # certificate verify
     ofile: '{{ playbook_dir }}/files/view_network_policy.json'
+    fastforward: 1000000
 
   tasks:
 
@@ -37,6 +38,7 @@
         topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: '{{ validate_certs }}'
+        fastforward: '{{ fastforward }}'
       register: tnp
 
     - name: Write the policy to a file

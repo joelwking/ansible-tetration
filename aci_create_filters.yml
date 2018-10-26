@@ -100,7 +100,7 @@
         tenant: '{{ tenant }}'
         filter: '{{ item.ip_protocol }}_{{ item.dst_port_start }}'
         description: ' '
-      loop: '{{ tnp.ansible_facts.acl }}'
+      loop: '{{ tnp.ansible_facts.intents }}'
       tags: filter
 
     - name: Add the filter entry to the filter
@@ -119,7 +119,7 @@
         ip_protocol: '{{ item.ip_protocol }}'                       # IP Protocol type when ether_type is ip, e.g. tcp, udp, etc.
         dst_port_start: '{{ item.dst_port_start }}'                 # Starting L4 port number
         dst_port_end: '{{ item.dst_port_end }}'                     # Ending L4 port number
-      loop: '{{ tnp.ansible_facts.acl }}'
+      loop: '{{ tnp.ansible_facts.intents }}'
       when: desired_state == "present"                              # Deleting the filter deletes the entry
       tags: entry
 
