@@ -42,12 +42,22 @@ options:
     start_at_offset:
         description:
             - "Begin looking at the specified offset number for UPDATE_START messages. Primarily a debugging tool."
+            - "When used along with 'earliest', allows returning a specific policy within the available messages."
         required: false
+        default: 0
+
+    start_at:
+        description:
+            - "Determines if we look for the earliest or latest available messages."
+        required: false
+        default: latest
+        choices: ['earliest', 'latest']
         
     timeout:
         description:
             - KafkaConsumer, consumer_timeout_ms, StopIteration if no message after 'n' ms.
-        default: 2000
+            - Tetration generates a policy enforcement every minute, or 60,000 ms.
+        default: 65535
         required: false
 
     cert_directory:
@@ -96,6 +106,16 @@ EXAMPLES = '''
       validate_certs: "{{ validate_certs }}"
   register: tnp
 
+- name: Tetration Network Policy
+  tetration_network_policy:
+      broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+      topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+      cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
+      validate_certs: '{{ validate_certs }}'
+      timeout: 60000
+      start_at: earliest
+      start_at_offset: 43271
+        
 '''
 #
 #  System Imports
@@ -221,7 +241,7 @@ def create_consumer(args, policy):
                              api_version=API_VERSION,
                              bootstrap_servers=args.get('broker'),
                              client_id=CLIENT_ID,                       # name passed to servers for identification
-                             auto_offset_reset='earliest',              # consume earliest available messages,
+                             auto_offset_reset=args.get('start_at'),    # consume earliest or latest available msgs
                              enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
                              consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
                              security_protocol=SSL,
@@ -399,7 +419,8 @@ def main():
         argument_spec=dict(
             broker=dict(required=True),
             topic=dict(required=True),
-            timeout=dict(default=2000, type='int', required=False),
+            timeout=dict(default=65535, type='int', required=False),
+            start_at=dict(choices=['latest', 'earliest'], default='latest', required=False),
             start_at_offset=dict(default=0, type='int', required=False),
             private_key=dict(default=KAFKA_PRIVATE_KEY, required=False),
             certificate_name=dict(default=KAFKA_CONSUMER_CA, required=False),
@@ -427,7 +448,7 @@ def main():
     else:
         module.fail_json(msg='No messages returned from Kafka broker!')
 
-    input_data.close(autocommit=AUTOCOMMIT)                # TODO verify autoommit
+    input_data.close(autocommit=AUTOCOMMIT)                # TODO verify autocmmit
     policy.add_fact('update_end_offset', policy.update_end_offset)
 
     module.exit_json(changed=False, **policy.result)
