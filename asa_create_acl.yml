@@ -6,15 +6,27 @@
 #
 #      author: Joel W. King, World Wide Technology
 #
-#      ssh -oKexAlgorithms=+diffie-hellman-group1-sha1 -c 3des-cbc admin@asa-5585-99543.sandbox.wwtatc.local
+#      Notes:
+#        ssh admin@asa-5585-99543.sandbox.wwtatc.local
+#        Unable to negotiate with 10.255.49.19 port 22: no matching key exchange method found. Their offer: diffie-hellman-group1-sha1
+#        ssh -oKexAlgorithms=+diffie-hellman-group1-sha1 -c 3des-cbc admin@asa-5585-99543.sandbox.wwtatc.local
+#
+#      Sample configuration generated on the ASA
+#
+#      object-group network SERVERS
+#        network-object host 10.255.40.139
+#      access-list OUTSIDE extended permit tcp any object-group SERVERS eq 5660
+#      access-list OUTSIDE extended permit tcp any object-group SERVERS eq https
+#      access-list OUTSIDE extended permit udp any object-group SERVERS eq ntp
+#      access-list OUTSIDE extended permit udp any object-group SERVERS eq domain
+#      access-list OUTSIDE extended permit tcp any object-group SERVERS eq ssh
+#      access-list OUTSIDE extended permit udp any object-group SERVERS eq 40125
+#      access-list OUTSIDE extended permit udp any object-group SERVERS eq snmp
 #
 - name: Network Policy Publisher for ASA firewall configuration
   hosts: ASA
   connection: local
   gather_facts: false
-
-  vars_files:
-    - "{{ playbook_dir }}/passwords.yml"                   # Encrypt with ansible-vault!
 
   vars:
     provider:                                              # ASA Credentials
@@ -27,7 +39,13 @@
     cert_directory: producer-tnp-12.cert                   # directory name of tetration certificates
     validate_certs: 'no'                                   # certificate verify
 
+    network_object: []                                     # Create an empty list
+    object_group: SERVERS                                  # Name of the network object group on ASA
+
   tasks:
+    - name: Include credentials from an encrypted password.yml file
+      include_vars: '{{ playbook_dir }}/files/passwords.yml'
+      no_log: True
 
     - name: Tetration Network Policy
       tetration_network_policy:
@@ -35,19 +53,30 @@
         topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: "{{ validate_certs }}"
+        timeout: 120000                                    # 2 minutes
       register: tnp
+
+    - debug:
+        msg: "{{ item['query'].split('unsafeSubnetValue=[')[1].split('/')[0] }}"
+        verbosity: 1
+      with_items: "{{ tnp.ansible_facts.inventory_filters }}"
+
+    - name: Create a list of server IP addresses
+      set_fact:
+        network_object: '{{network_object + [item]}}'
+      with_items: "{{ tnp.ansible_facts.inventory_filters | list }}"
 
     - name: Configure ASA firewall
       asa_config:
         lines:
-          - description Updated by Ansible
-          - network-object host 192.0.2.1
-          - network-object host 192.0.2.2
-        parents: ["object-group network SERVERS"]
+          - "network-object host {{ item['query'].split('unsafeSubnetValue=[')[1].split('/')[0] }}"
+        parents: ["object-group network {{ object_group }}"]
         provider: "{{ provider }}"
+      with_items: "{{ network_object }}"
 
     - name: Configure ASA firewall access-list
       asa_config:
         lines:
-          - access-list OUTSIDE line 1 extended permit tcp any host 209.165.200.220 eq www
+          - "access-list OUTSIDE line 1 extended permit {{ item.ip_protocol }} any object-group {{ object_group }} eq {{ item.dst_port_start }}"
         provider: "{{ provider }}"
+      loop: '{{ tnp.ansible_facts.intents }}'
