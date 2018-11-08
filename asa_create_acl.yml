@@ -1,0 +1,53 @@
+#!/usr/bin/ansible-playbook
+---
+#
+#      Copyright (c) 2018 World Wide Technology, Inc.
+#      All rights reserved.
+#
+#      author: Joel W. King, World Wide Technology
+#
+#      ssh -oKexAlgorithms=+diffie-hellman-group1-sha1 -c 3des-cbc admin@asa-5585-99543.sandbox.wwtatc.local
+#
+- name: Network Policy Publisher for ASA firewall configuration
+  hosts: ASA
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - "{{ playbook_dir }}/passwords.yml"                   # Encrypt with ansible-vault!
+
+  vars:
+    provider:                                              # ASA Credentials
+      host: "{{inventory_hostname}}"
+      username: "{{asa.username}}"
+      password: "{{asa.password}}"
+      authorize: yes
+      auth_pass: "{{asa.password}}"
+                                                           # Tetration / Kafka options
+    cert_directory: producer-tnp-12.cert                   # directory name of tetration certificates
+    validate_certs: 'no'                                   # certificate verify
+
+  tasks:
+
+    - name: Tetration Network Policy
+      tetration_network_policy:
+        broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+        topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
+        cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
+        validate_certs: "{{ validate_certs }}"
+      register: tnp
+
+    - name: Configure ASA firewall
+      asa_config:
+        lines:
+          - description Updated by Ansible
+          - network-object host 192.0.2.1
+          - network-object host 192.0.2.2
+        parents: ["object-group network SERVERS"]
+        provider: "{{ provider }}"
+
+    - name: Configure ASA firewall access-list
+      asa_config:
+        lines:
+          - access-list OUTSIDE line 1 extended permit tcp any host 209.165.200.220 eq www
+        provider: "{{ provider }}"
