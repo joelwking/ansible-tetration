@@ -3,7 +3,7 @@ Ansible interface to Cisco Tetration Network Policy Publisher
 
 This repository is a companion to the AnsibleFest 2018 network breakout session, *Using Ansible Tower to implement security policies and telemetry streaming for hybrid clouds*. 
 
-The focus of the session illustrates using Ansible to facilitate installation of the software sensor on Linux hosts, how Cisco Tetration can be used as a dynamic inventory source for Ansible Playbooks and how policy generated from Tetration Application Dependency Mapping (ADM) Network Policy Publisher can be used to apply policy to a Cisco ACI fabric, Cisco ASA firewall and other network devices.
+The focus of the session illustrates using Ansible to facilitate installation of the software sensor on Linux hosts, how Cisco Tetration can be used as a dynamic inventory source for Ansible Playbooks and how policy generated from Tetration Application Dependency Mapping (ADM) Network Policy Publisher can be used to apply policy to a Cisco ACI fabric, Cisco ASA firewall, and other network devices.
 
 ## Technical Marketing Collateral
 ### Blog
@@ -15,7 +15,7 @@ Cisco DevNet Code exchange [links](https://developer.cisco.com/codeexchange/gith
 ### Slides and Video
 The AnsibleFest 2018 presentation slides are available on [Slideshare](https://www.slideshare.net/joelwking/using-ansible-tower-to-implement-security-policies-and-telemetry-streaming-for-hybrid-clouds).
 
-On 2 November 2018 an update to the presentation was given to the WWT Network Solutions virtual team meeting, [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy-enforcement-in-multivendor-environments) A [recording](https://vimeo.com/298660860) of this session is available.
+On 2 November 2018, an update to the presentation was given to the WWT Network Solutions virtual team meeting, [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy-enforcement-in-multivendor-environments). A [recording](https://vimeo.com/298660860) of this session is available.
 
 ## Playbooks
 ### view_network_policy.yml
