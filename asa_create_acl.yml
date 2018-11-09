@@ -38,22 +38,24 @@
 
   vars:
     provider:                                              # ASA Credentials
-      host: "{{inventory_hostname}}"
-      username: "{{asa.username}}"
-      password: "{{asa.password}}"
+      host: "{{ inventory_hostname }}"
+      username: "{{ asa.username }}"
+      password: "{{ asa.password }}"
       authorize: yes
-      auth_pass: "{{asa.password}}"
+      auth_pass: "{{ asa.password }}"
                                                            # Tetration / Kafka options
     cert_directory: producer-tnp-12.cert                   # directory name of tetration certificates
-    validate_certs: 'no'                                   # certificate verify
+    validate_certs: "no"                                   # certificate verify
 
     network_object: []                                     # Create an empty list (see set_fact)
     object_group: SERVERS                                  # Name of the network object group on ASA
     acl_name: OUTSIDE                                      # Name of the Access Control List (ACL)
 
+    acl_action: {"ALLOW": "permit", "DROP": "deny"}        # translator for action verbs
+
   tasks:
     - name: Include credentials from an encrypted password.yml file
-      include_vars: '{{ playbook_dir }}/files/passwords.yml'
+      include_vars: "{{ playbook_dir }}/files/passwords.yml"
       no_log: True
 
     - name: Tetration Network Policy
@@ -66,7 +68,7 @@
       register: tnp
 
       #
-      # Obtain the server IP address from the inventory filter variable 'unsafeSubnetValue'
+      # Obtain the server IP address from the inventory filter variable 'unsafeSubnetValue=[10.255.40.139/32]]''
       #
     - debug:
         msg: "{{ item['query'].split('unsafeSubnetValue=[')[1].split('/')[0] }}"
@@ -75,7 +77,7 @@
 
     - name: Create a list of server IP addresses from the inventory filters
       set_fact:
-        network_object: '{{network_object + [item]}}'
+        network_object: "{{ network_object + [item] }}"
       with_items: "{{ tnp.ansible_facts.inventory_filters | list }}"
 
     - name: Configure ASA firewall network-object
@@ -89,6 +91,6 @@
     - name: Configure ASA firewall access-list
       asa_config:
         lines:
-          - "access-list {{ acl_name }} line 1 extended permit {{ item.ip_protocol }} any object-group {{ object_group }} eq {{ item.dst_port_start }}"
+          - "access-list {{ acl_name }} line 1 extended {{ acl_action[item.action] }} {{ item.ip_protocol }} any object-group {{ object_group }} eq {{ item.dst_port_start }}"
         provider: "{{ provider }}"
-      loop: '{{ tnp.ansible_facts.intents }}'
+      loop: "{{ tnp.ansible_facts.intents }}"
