@@ -85,6 +85,7 @@
         topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: '{{ validate_certs }}'
+        timeout: 120000                                    # 2 minutes, enforcement policy is published every minute
       register: tnp
 #
 #   ACI Filter / Filter Entry Section
