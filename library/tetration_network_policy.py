@@ -121,7 +121,6 @@ EXAMPLES = '''
 #  System Imports
 #
 import ssl
-import sys
 import ipaddress
 #
 #  Application Imports
@@ -137,11 +136,16 @@ except ImportError:
     from ansible.module_utils.basic import AnsibleModule   # Production
 #
 #  Protocol Buffer Imports  (User compiled, source is Tetration documentation)
+# TODO following Thanksgiving 2018
+#     Assuming ansible.cfg specifies module_utils   = /usr/share/ansible/module_utils/
+#    /usr/share/ansible/module_utils  contains tetration_network_policy_pb2.py
+#     symbolic link in
+#    /usr/share/ansible/google -> /home/administrator/protobufs/protobuf-3.6.1/python/google
+#    and PYTHONPATH=/usr/share/ansible
+#    {{ playbook_dir }} is ./library/tetration_network_policy.py
 #
-# TODO eliminate these path appends
-sys.path.append('/home/administrator/tetration/ansible-tetration/library')
-sys.path.append('/home/administrator/protobufs/protobuf-3.6.1/python')
-import tetration_network_policy_pb2 as tnp_pb2
+#    we have a problem running from PyCharm Pro because it doesn't include the PYTHONPATH
+import ansible.module_utils.tetration_network_policy_pb2 as tnp_pb2
 #
 # Constants
 #

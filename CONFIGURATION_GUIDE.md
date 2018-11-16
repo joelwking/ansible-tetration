@@ -34,7 +34,7 @@ Refer to the Google Python tutorial, at  [https://developers.google.com/protocol
 ```
 
 ~/protobufs$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.tar.gz
-~/protobufs$gunzip protobuf-python-3.6.1.tar.gz
+~/protobufs$ gunzip protobuf-python-3.6.1.tar.gz
 ```
 The program imports `tetration_network_policy_pb2`, PYTHONPATH must reference the directories of the Python library and the compiled protocol buffer.
 ```
@@ -88,6 +88,17 @@ Assuming the .proto file is `/files/tetration_network_policy.proto`, write the o
 protoc -I=/ansible-tetration/files/ --python_out=/ansible-tetration/library/ /ansible-tetration/files/tetration_network_policy.proto
 ```
 View, but do not edit, the output file.
+
+#### Ansible Configuration file
+
+The Ansible configuration file, `ansible.cfg` should specify a location to look for the `tetration_network_policy.py` module and the protocol buffer module, `tetration_network_policy_pb2.py`.
+
+Modify the `ansible.cfg` file to include:
+```
+library        = /usr/share/ansible/
+module_utils   = /usr/share/ansible/module_utils/
+```
+and copy (or move) `tetration_network_policy.py` to the directory specified as the `library` and  `tetration_network_policy_pb2.py` to the directory specified by the `module_utils`.
 
 #### Print help
 
