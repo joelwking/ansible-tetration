@@ -136,16 +136,29 @@ except ImportError:
     from ansible.module_utils.basic import AnsibleModule   # Production
 #
 #  Protocol Buffer Imports  (User compiled, source is Tetration documentation)
-# TODO following Thanksgiving 2018
-#     Assuming ansible.cfg specifies module_utils   = /usr/share/ansible/module_utils/
-#    /usr/share/ansible/module_utils  contains tetration_network_policy_pb2.py
+# TODO updated for testing
+#
+#     ansible.cfg
+#
+#     DEFAULT_MODULE_PATH(/home/administrator/ansible/playbooks/ansible.cfg) = [u'/usr/share/ansible']
+#     DEFAULT_MODULE_UTILS_PATH(/home/administrator/ansible/playbooks/ansible.cfg) = [u'/usr/share/ansible/module_utils']
+#
 #     symbolic link in
-#    /usr/share/ansible/google -> /home/administrator/protobufs/protobuf-3.6.1/python/google
-#    and PYTHONPATH=/usr/share/ansible
+#    cd /usr/lib/python2.7/dist-packages/
+#    sudo ln -s /home/administrator/protobufs/protobuf-3.6.1/python/google google
+#
 #    {{ playbook_dir }} is ./library/tetration_network_policy.py
 #
-#    we have a problem running from PyCharm Pro because it doesn't include the PYTHONPATH
-import ansible.module_utils.tetration_network_policy_pb2 as tnp_pb2
+#    /usr/share/ansible/module-utils/network/tetration
+#    contains a copy of the compiled protocol buffer files,
+#    __init__.py  tetration_network_policy_pb2.py  tetration_network_policy_pb2.pyc
+#
+#    This import works when running under Ansible
+#
+import ansible.module_utils.network.tetration.tetration_network_policy_pb2 as tnp_pb2
+#
+#    cd /usr/lib/python2.7/dist-packages/ansible/module_utils/network/
+#    sudo ln -s /usr/share/ansible/module_utils/network/tetration tetration
 #
 # Constants
 #
