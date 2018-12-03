@@ -100,39 +100,36 @@ module_utils   = /usr/share/ansible/module_utils/
 ```
 and copy (or move) `tetration_network_policy.py` to the directory specified as the `library` and  `tetration_network_policy_pb2.py` to the directory specified by the `module_utils`.
 
-#### Print help
+#### Imports
 
-You can use the interactive Python interpreter to print the help from the compiled .proto file:
+Ansible module:
 
-```python
-import tetration_network_policy_pb2
-
-import pydoc
-help = pydoc.render_doc(tetration_network_policy_pb2, "Help on %s")
-f = open("/tmp/tetration_network_policy_pb2.txt", 'w+')
-print >>f, help
-f.close()
-quit()
 ```
-Review the output file.
-```bash
-cat /tmp/tetration_network_policy_pb2.txt
+tetration_network_policy.py
+    import ansible.module_utils.network.tetration.tetration_network_policy_pb2     
+        tetration_network_policy_pb2.py
+            from google.protobuf import ...   
+
 ```
+
+| **Diretory**                     | **Source**   | **Target Description**       |
+|----------------------------------|--------------|-------------------------------|
+| /home/administrator/protobufs/   | https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.tar.gz | unzip / tar |
+| /home/administrator/protobufs/protobuf-3.6.1/python/google | n/a | target of symlink |
+| /usr/lib/python2.7/dist-packages | symlink      |  google -> /home/administrator/protobufs/protobuf-3.6.1/python/google       |           
+| /usr/lib/python2.7/dist-packages/ansible/module_utils/network  | symlink      |  tetration -> /usr/share/ansible/module_utils/network/tetration  |
+| /usr/share/ansible               | ansible.cfg  | library        = /usr/share/ansible/ |
+| /usr/share/ansible/tetration_network_policy.py | cp | tetration_network_policy.py from {{playbook_dir}}/library |
+| /usr/share/ansible/module_utils  | ansible.cfg  | module_utils = /usr/share/ansible/module_utils/ |
+| /usr/share/ansible/module_utils/network/tetration | cp |  tetration_network_policy_pb2.py from {{playbook_dir}}/library |
+
+  
+
 ##### Installing Required Packages
 
+The development environment uses apt as the package manager, the following 'apt' and 'pip' packages and SDKs will need be installed to used this software.
+
 ```YAML
-#!/usr/bin/ansible-playbook
----
-#      setup_ubuntu.yml
-#
-#
-#      Copyright (c) 2018 World Wide Technology, Inc.
-#      All rights reserved.
-#
-#      Author: joel.king@wwt.com
-#
-#      Usage: sudo ansible-playbook setup_ubuntu.yml --ask-become-pass
-#
 - name: Installs packages for my development environment
   hosts: localhost
 
@@ -145,59 +142,23 @@ cat /tmp/tetration_network_policy_pb2.txt
           - unzip                           # unzip utility
           - libsnappy-dev                   # install Snappy C library for python-snappy
       pip:
-          - tetpyclient                    # Tetration 1.0.7
-          - xlsxwriter                     # Tetration (Bruce Clounie)
-          - pandas                         # Tetration (Bruce Clounie)
-          - pymongo                        # MongoDB  3.6.1
-          - netaddr                        # manulipulate network addresses 0.7.19
+          - tetpyclient                    # Tetration 1.0.7 
+          - ipaddress                      # manipulates IP addresses
           - pyopenssl                      # ACI modules when using certificates for authentication 18.0.0
           - kafka-python                   # Kafka for Tetration 1.4.3
           - python-snappy                  # KafkaConsumer Snappy decompression (requires libsnappy-dev)  0.5.3
           - pydevd                         # Remote debugger for PyCharm 1.4.0
 
-  tasks:
-    - name: Determine OS
-      debug:
-         msg:  "{{ansible_pkg_mgr}}"           # 'apt' or 'yum'
-
-    - name: Install the apt packages
-      apt:
-        name: "{{item}}"
-        state: latest
-      with_items: "{{packages.apt}}"
-      when: ansible_pkg_mgr == 'apt'
-
-    - name: Upgrade pip 
-      command: "pip install --upgrade pip"
-
-    - name: Install the python packages
-      pip:
-        name: "{{item}}"
-        state: latest
-        use_mirrors: no
-      with_items: "{{packages.pip}}"
-
-    - name: Upgrade all packages to the latest version
-      apt:
-      #  name: "*"
-        state: latest
-      become: true 
-      when: ansible_pkg_mgr == 'apt'
-
-    - name: Update all packages to the latest version
-      apt:
-        upgrade: dist
-      become: true
-      when: ansible_pkg_mgr == 'apt'
-#          
+ 
 ```   
 
 ### Authenticating with the Kafka Broker
 
 THIS SECTION INTENTIONALLY LEFT BLANK
 
-### Tips for using the protocol buffer methods
-Few tutorials exist on using Python and protocol buffers, here are some notes:
+### References, Tips and examples
+
+This section includes tips for using the protocol buffer methods. There are very few tutorials exist on using Python and protocol buffers.
 
 Review the `.proto` file, for example:
 
@@ -251,8 +212,27 @@ Use the Name method to decode the values provided.
 Enum IPAddressFamily has no name defined for value 3
 >>>
 ```
+#### Print help
 
-### Reference and notes
+You can use the interactive Python interpreter to print the help from the compiled .proto file:
+
+```python
+import tetration_network_policy_pb2
+
+import pydoc
+help = pydoc.render_doc(tetration_network_policy_pb2, "Help on %s")
+f = open("/tmp/tetration_network_policy_pb2.txt", 'w+')
+print >>f, help
+f.close()
+quit()
+```
+Review the output file.
+```bash
+cat /tmp/tetration_network_policy_pb2.txt
+```
+
+#### Examples
+
 Example code in the `tetration-exchange` repo:
 
 * [Policy consumer client implementation reference written in Go](https://github.com/tetration-exchange/pol-client-go)
