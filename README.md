@@ -17,6 +17,8 @@ The AnsibleFest 2018 presentation slides are available on [Slideshare](https://w
 
 On 2 November 2018, an update to the presentation was given to the WWT Network Solutions virtual team meeting, [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy-enforcement-in-multivendor-environments). A [recording](https://vimeo.com/298660860) of this session is available.
 
+RedHat has published the collateral from [AnsibleFest Austin 2018](https://www.ansible.com/resources/videos/ansiblefest-austin-2018) this session is at [https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming](https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming).
+
 ## Playbooks
 ### view_network_policy.yml
 This playbook retrieves network policy from the Tetration Network Policy Publisher and creates a file to view the results. It is a data visualization and debugging tool.
