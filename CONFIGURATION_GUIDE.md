@@ -61,7 +61,8 @@ The compiled protocol buffer is provided in `./library`.
 
 Refer to the Google Python tutorial, at  [https://developers.google.com/protocol-buffers/docs/pythontutorial](https://developers.google.com/protocol-buffers/docs/pythontutorial]), download the Python library.
 ```
-/usr/share$ sudo mkdir protobufs
+$ cd /usr/share
+$ sudo mkdir protobufs
 $ cd protobufs
 $ sudo wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.tar.gz
 $ sudo gunzip protobuf-python-3.6.1.tar.gz
@@ -104,28 +105,177 @@ sudo chown -R $USER /usr/local/include/google
 administrator@flint:~/protobufs$ protoc --version
 libprotoc 3.6.1
 ```
+###### Optionally delete the zip file
+``` 
+sudo rm  protoc-3.6.1-linux-x86_64.zip
+```
 
 #### Optional Compile the .proto file
 The Google tutorial syntax for compilation of the .proto file is:
 ```
 protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/addressbook.proto
 ```
-Assuming the .proto file is `/files/tetration_network_policy.proto`, write the output to the same directory as the source code `/library/`, invoke the compiler:
+
+##### Create the target directory
 ```
-protoc -I=/ansible-tetration/files/ --python_out=/ansible-tetration/library/ /ansible-tetration/files/tetration_network_policy.proto
+$ sudo mkdir /usr/share/ansible/module_utils/network/
 ```
-View, but do not edit, the output file.
+##### Download the source file
+The protocol buffer source file used in solution development was cut 'n pasted from the Tetration applicance (version 2.3.1.41) at this URL, *https://<tetration_host>/documentation/ui/adm/policies.html#protobuf-definition-file* and saved as `files/tetration_network_policy.proto`.
+
+```
+$ cd /usr/share/ansible/module_utils/network/
+$ sudo wget https://raw.githubusercontent.com/joelwking/ansible-tetration/master/files/tetration_network_policy.proto
+
+```
+
+##### Run the compiler
+Assuming the .proto file is `/usr/share/ansible/module_utils/network/tetration/tetration_network_policy.proto`, write the output to the same directory as the source code `/usr/share/ansible/module_utils/network/tetration/`, invoke the compiler:
+```
+sudo protoc -I=/usr/share/ansible/module_utils/network/ --python_out=/usr/share/ansible/module_utils/network/ /usr/share/ansible/module_utils/network/tetration_network_policy.proto
+```
+##### Verify the resulting Python module
+
+The protocol compiler generates a Python module which imports modules from the Python Protocol Buffer library. Set the environmental variable PYTHONPATH.
+```
+export PYTHONPATH=/usr/share/protobufs/protobuf-3.6.1/python
+```
+Invoke the interactive Python interpreter to verify compiled .proto file.
+```
+$ cd /usr/share/ansible/module_utils/network/tetration/
+$ python
+Python 2.7.12 (default, Nov 12 2018, 14:36:49)
+[GCC 5.4.0 20160609] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import tetration_network_policy_pb2
+```
+If the import statement raises an `ImportError` there is a likely an issue with the .proto file.
+
+##### View the documenation
+Issue the following command to view the documentation of the compiled .proto file.
+```
+$ pydoc tetration_network_policy_pb2
+```
+
+##### Tutorial on using the Tetration Network Policy prototocol buffer
+There are very few tutorials exist on using Python and protocol buffers. Protocol buffers are efficient by using integers instead of strings to represent keys and values. For example, the CatchAllPolicy for an intent is either ALLOW or DENY. 
+
+Review the `.proto` file, for example:
+
+```
+// CatchAll policy action.
+message CatchAllPolicy {
+  enum Action {
+    INVALID = 0;
+    // Allow the corresponding flows.
+    ALLOW = 1;
+    // DROP the corresponding flows.
+    DROP = 2;
+  };
+  Action action = 1;
+}
+```
+Derive a meaningful name to the value of `catch_all.action` with:
+
+```
+>>> import tetration_network_policy_pb2 as tnp
+>>> tnp.CatchAllPolicy.Action.Name(1)
+'ALLOW'
+>>>>
+```
+IPAddressFamily example:
+```
+enum IPAddressFamily {
+  INVALID = 0;
+  IPv4 = 1;
+  IPv6 = 2;
+};
+```
+Use the Name method to decode the values provided.
+```
+>>> import tetration_network_policy_pb2 as tnp
+>>> tnp.IPAddressFamily.Name(0)
+'INVALID'
+>>> tnp.IPAddressFamily.Name(1)
+'IPv4'
+>>> tnp.IPAddressFamily.Name(2)
+'IPv6'
+>>> try:
+...     tnp.IPAddressFamily.Name(3)
+... except ValueError as e:
+...     print e
+...
+Enum IPAddressFamily has no name defined for value 3
+>>>
+```
 
 #### Ansible Configuration file
 
-The Ansible configuration file, `ansible.cfg` should specify a location to look for the `tetration_network_policy.py` module and the protocol buffer module, `tetration_network_policy_pb2.py`.
+The Ansible configuration file, `ansible.cfg` must specify a location to look for the `tetration_network_policy.py` module and the protocol buffer module, `tetration_network_policy_pb2.py`.
 
-Modify the `ansible.cfg` file to include:
+Modify the `/etc/ansible/ansible.cfg` file to include:
 ```
 library        = /usr/share/ansible/
 module_utils   = /usr/share/ansible/module_utils/
 ```
 and copy (or move) `tetration_network_policy.py` to the directory specified as the `library` and  `tetration_network_policy_pb2.py` to the directory specified by the `module_utils`.
+
+```
+$ cd /usr/share/ansible
+$ sudo wget https://raw.githubusercontent.com/joelwking/ansible-tetration/master/library/tetration_network_policy.py
+```
+
+##### Verify configuration updates
+```
+$ ansible --version
+ansible 2.7.4
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = [u'/usr/share/ansible']
+  ansible python module location = /usr/lib/python2.7/dist-packages/ansible
+  executable location = /usr/bin/ansible
+  python version = 2.7.12 (default, Nov 12 2018, 14:36:49) [GCC 5.4.0 20160609]
+```
+To verify Ansible can located the module, issue the `ansible-doc` command.
+```
+ansible-doc tetration_network_policy
+```
+
+#### Create symbolic link for the Python Protocol Buffer library
+
+```
+$ cd /usr/lib/python2.7/dist-packages
+$ sudo ln -s /usr/share/protobufs/protobuf-3.6.1/python/google google
+```
+
+```
+$ cd /usr/lib/python2.7/dist-packages/ansible/module_utils/network
+$ sudo ln -s /usr/share/ansible/module_utils/network/tetration tetration
+```
+Make Python treat the directory as containing a package.
+```
+$ sudo touch /usr/share/ansible/module_utils/network/tetration/__init__.py 
+```
+
+Verify
+```
+$ unset PYTHONPATH
+$ cd /usr/share/ansible
+$ python
+Python 2.7.12 (default, Nov 12 2018, 14:36:49)
+[GCC 5.4.0 20160609] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import ansible.module_utils.network.tetration.tetration_network_policy_pb2
+>>>
+```
+
+Verify using Ansible
+```
+$ ansible localhost -m tetration_network_policy -a "broker='192.0.2.1:9093' topic='Tnp-12'"                    [WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+localhost | FAILED! => {
+    "changed": false,
+    "msg": "missing required arguments: cert_directory
+```    
 
 #### Imports
 
@@ -156,79 +306,10 @@ tetration_network_policy.py
 
 THIS SECTION INTENTIONALLY LEFT BLANK
 
-### References, Tips and examples
 
-This section includes tips for using the protocol buffer methods. There are very few tutorials exist on using Python and protocol buffers.
 
-Review the `.proto` file, for example:
 
-```
-// CatchAll policy action.
-message CatchAllPolicy {
-  enum Action {
-    INVALID = 0;
-    // Allow the corresponding flows.
-    ALLOW = 1;
-    // DROP the corresponding flows.
-    DROP = 2;
-  };
-  Action action = 1;
-}
-```
-Derive a meaningful name to the value of catch_all.action with:
 
-```python
-import tetration_network_policy_pb2 
-
-    ### assume the buffer is stored in policy.buffer 
-    tnp = policy.buffer.tenant_network_policy
-    for item in tnp.network_policy:
-        print ('catch_all', tetration_network_policy_pb2.CatchAllPolicy.Action.Name(item.catch_all.action))
-
-('catch_all', 'ALLOW')        
-```
-IPAddressFamily example:
-```
-enum IPAddressFamily {
-  INVALID = 0;
-  IPv4 = 1;
-  IPv6 = 2;
-};
-```
-Use the Name method to decode the values provided.
-```
->>> import tetration_network_policy_pb2 as tnp
->>> tnp.IPAddressFamily.Name(0)
-'INVALID'
->>> tnp.IPAddressFamily.Name(1)
-'IPv4'
->>> tnp.IPAddressFamily.Name(2)
-'IPv6'
->>> try:
-...     tnp.IPAddressFamily.Name(3)
-... except ValueError as e:
-...     print e
-...
-Enum IPAddressFamily has no name defined for value 3
->>>
-```
-#### Print help
-
-You can use the interactive Python interpreter to print the help from the compiled .proto file:
-
-```python
-import tetration_network_policy_pb2
-
-import pydoc
-help = pydoc.render_doc(tetration_network_policy_pb2, "Help on %s")
-f = open("/tmp/tetration_network_policy_pb2.txt", 'w+')
-print >>f, help
-f.close()
-quit()
-```
-Review the output file.
-```bash
-cat /tmp/tetration_network_policy_pb2.txt
 ```
 
 #### Examples
