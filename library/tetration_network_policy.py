@@ -136,29 +136,8 @@ except ImportError:
     from ansible.module_utils.basic import AnsibleModule   # Production
 #
 #  Protocol Buffer Imports  (User compiled, source is Tetration documentation)
-# TODO updated for testing
-#
-#     ansible.cfg
-#
-#     DEFAULT_MODULE_PATH(/home/administrator/ansible/playbooks/ansible.cfg) = [u'/usr/share/ansible']
-#     DEFAULT_MODULE_UTILS_PATH(/home/administrator/ansible/playbooks/ansible.cfg) = [u'/usr/share/ansible/module_utils']
-#
-#     symbolic link in
-#    cd /usr/lib/python2.7/dist-packages/
-#    sudo ln -s /home/administrator/protobufs/protobuf-3.6.1/python/google google
-#
-#    {{ playbook_dir }} is ./library/tetration_network_policy.py
-#
-#    /usr/share/ansible/module-utils/network/tetration
-#    contains a copy of the compiled protocol buffer files,
-#    __init__.py  tetration_network_policy_pb2.py  tetration_network_policy_pb2.pyc
-#
-#    This import works when running under Ansible
 #
 import ansible.module_utils.network.tetration.tetration_network_policy_pb2 as tnp_pb2
-#
-#    cd /usr/lib/python2.7/dist-packages/ansible/module_utils/network/
-#    sudo ln -s /usr/share/ansible/module_utils/network/tetration tetration
 #
 # Constants
 #
