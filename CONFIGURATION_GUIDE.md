@@ -64,11 +64,11 @@ The .proto definition file `tetration_network_policy.proto` is used by the compi
 ```python
     import ansible.module_utils.network.tetration.tetration_network_policy_pb2     
 ```
-    **tetration_network_policy_pb2.py**
-    ```python
-            from google.protobuf import ...   
-            # and so on
-    ```
+**tetration_network_policy_pb2.py**
+```python
+        from google.protobuf import ...   
+        # and so on
+```
 
 The goal of this document is to configure the target Linux system to run Ansible, Ansible Tower and the software with all dependencies.
 
@@ -339,11 +339,33 @@ This table represents where the components of this solution are installed on the
 | /usr/share/ansible/module_utils/network/tetration | cp |  tetration_network_policy_pb2.py from {{playbook_dir}}/library |
 
 
+### Install Ansible Tower
+Ansible engine has been installed to the control node and we have verified execution of the program, install Ansible Tower by following these instructions:
+
+[Ansible Tower Quick Installation Guide v3.3.2](
+https://docs.ansible.com/ansible-tower/latest/html/quickinstall/prepare.html)
+
+After installation, apply your license via the GUI. Tested using Tower 3.3.2 and Ansible 2.7.4.
+
+#### Inventory
+Because this solution runs in the control node, there is no requirement to create an inventory on the Ansible Tower machine. The default 'localhost' is sufficient. However, credentials must be downloaded from the Tetration GUI to authenticate with the Kafka Broker. This credential download also includes the Kafka Broker IP address and port number.
   
 ### Authenticating with the Kafka Broker
+
+To access the Kafka Broker, download the certificates, name of the Kafka topic, broker IP address and port number.
+
+Refer to [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy) specifically slide 21 for an overview of configuring the Tetration Network Policy Publisher. The URL to download the compressed tar file is `https://<tetration>/#/maintenance/lab_admin/datataps`. 
+
+The filename will be include the Kafka topic name, for example, `producer-tnp-12.cert.tar.gz`.  Uncompress and extract the files. The result should look like the following:
 ```
-THIS SECTION INTENTIONALLY LEFT BLANK
+producer-tnp-12.cert
+├── kafkaBrokerIps.txt
+├── KafkaCA.cert
+├── KafkaConsumerCA.cert
+├── KafkaConsumerPrivateKey.key
+└── topic.txt
 ```
+Note: These **files are not encrypted!** Treat the contents as credentials, which they are.
 
 #### Examples
 Source code for the TetrationNetworkPolicyProto definition file is also available from the Tetration appliance GUI, or can be downloaded from the tetration-exchange repo: https://github.com/tetration-exchange/pol-client-java/blob/master/proto/network_enforcement/tetration_network_policy.proto. 
