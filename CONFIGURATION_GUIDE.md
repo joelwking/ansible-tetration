@@ -97,6 +97,18 @@ Now version 3.6.1 of the protocol buffer library is at this directory.
 /usr/share/protobufs/protobuf-3.6.1
 ```
 
+#### Create the target directory **REQUIRED**
+You can either compile the source .proto file or download the compiled result, `tetration_network_policy_pb2.py` from `library`. In either case you must verify the Python module can be imported.
+
+```
+cd /usr/share/
+$ sudo mkdir ansible ansible/module_utils ansible/module_utils/network  ansible/module_utils/network/tetration
+```
+Make Python treat the directory as containing a package.
+```
+$ sudo touch /usr/share/ansible/module_utils/network/tetration/__init__.py 
+```
+
 #### Protocol buffer compiler **OPTIONAL**
 This section includes instructions for installing the Protocobuf3 compiler. These [instructions](https://gist.github.com/rvegas/e312cb81bbb0b22285bc6238216b709b) are a useful reference.
 
@@ -136,37 +148,38 @@ libprotoc 3.6.1
 sudo rm  protoc-3.6.1-linux-x86_64.zip
 ```
 
-#### Compile the .proto file **OPTIONAL**
+##### Compile the .proto file
 This section documents how to compile a source .proto file and create the resulting Python classes and methods. The Google tutorial syntax for compilation of the .proto file is:
 ```
 protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/addressbook.proto
 ```
 
-##### Create the target directory **REQUIRED**
-You can either compile the source .proto file or download the compiled result, `tetration_network_policy_pb2.py` from `library`.
+In the following steps, you must create the target directory. You have the option to either compile the protocol definiton file `.proto`, or simply download the compiled result, the generated Python file.
 
-```
-cd /usr/share/
-$ sudo mkdir ansible ansible/module_utils ansible/module_utils/network  ansible/module_utils/network/tetration
-```
-Make Python treat the directory as containing a package.
-```
-$ sudo touch /usr/share/ansible/module_utils/network/tetration/__init__.py 
-```
-```
-##### Download the source file **OPTIONAL**
+##### Compile from source
+Follow these steps if you wish to comile from source.
 
+###### Download the source file
+If you wish to compile the source file, download the `.proto` source file.
 ```
 $ cd /usr/share/ansible/module_utils/network/tetration/
 $ sudo wget https://raw.githubusercontent.com/joelwking/ansible-tetration/master/files/tetration_network_policy.proto
 ```
-
-##### Run the compiler
+###### Run the compiler
 Assuming the .proto file is `/usr/share/ansible/module_utils/network/tetration/tetration_network_policy.proto`, write the output to the same directory as the source code `/usr/share/ansible/module_utils/network/tetration/`, invoke the compiler:
 ```
 $ sudo protoc -I=/usr/share/ansible/module_utils/network/tetration --python_out=/usr/share/ansible/module_utils/network/tetration /usr/share/ansible/module_utils/network/tetration/tetration_network_policy.proto
 ```
-##### Verify the resulting Python module
+
+#### Download the generated Python file **OPTIONAL**
+If you skipped compiling the `.proto` file, download the compiled result, `tetration_network_policy_pb2.py' tetration_network_policy_pb2.py` from `library`.
+
+```
+$ cd /usr/share/ansible/module_utils/network/tetration/
+$ sudo wget https://raw.githubusercontent.com/joelwking/ansible-tetration/master/library/tetration_network_policy_pb2.py
+```
+
+#### Verify the resulting Python module
 
 The protocol compiler generates a Python module which imports modules from the Python Protocol Buffer library. Set the environmental variable PYTHONPATH.
 ```
@@ -190,7 +203,7 @@ $ pydoc tetration_network_policy_pb2
 ```
 
 ##### Tutorial on using the Tetration Network Policy prototocol buffer
-There are very few tutorials exist on using Python and protocol buffers. Protocol buffers are efficient by using integers instead of strings to represent keys and values. For example, the CatchAllPolicy for an intent is either ALLOW or DENY. 
+There are limited tutorials on using Python and protocol buffers. Protocol buffers are efficient by using integers instead of strings to represent keys and values. For example, the CatchAllPolicy for an intent is either ALLOW or DENY. These are values are transmitted between publisher and client as a value of 1 or 2.
 
 Review the `.proto` file, for example:
 
@@ -207,7 +220,7 @@ message CatchAllPolicy {
   Action action = 1;
 }
 ```
-Derive a meaningful name to the value of `catch_all.action` with:
+To 'decode' the value of 1 or 2, we can derive a meaningful name to the value of `catch_all.action` with:
 
 ```
 >>> import tetration_network_policy_pb2 as tnp
@@ -280,13 +293,14 @@ $ cd /usr/lib/python2.7/dist-packages
 $ sudo ln -s /usr/share/protobufs/protobuf-3.6.1/python/google google
 ```
 
+#### Create symbolic link for the complied protocol buffer source file
 ```
 $ cd /usr/lib/python2.7/dist-packages/ansible/module_utils/network
 $ sudo ln -s /usr/share/ansible/module_utils/network/tetration tetration
 ```
 
-
-Verify
+#### Verification
+Verify the complied protocol buffer file can be imported using the interactive Python interpreter.
 ```
 $ unset PYTHONPATH
 $ cd /usr/share/ansible
@@ -298,7 +312,7 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```
 
-Verify using Ansible
+Verify running `tetration_network_policy.py` as an Ansible module.
 
 ```
 $ ansible localhost -m tetration_network_policy -a "broker='192.0.2.1:9093' topic='Tnp-12'"                    
@@ -308,13 +322,15 @@ localhost | FAILED! => {
     "changed": false,
     "msg": "missing required arguments: cert_directory
 ```    
+The above error message is expected, as the certificate directory has not been specified. This error does, however, validate the import statements have executed successfully.
 
-
+### Library 
+This table represents where the components of this solution are installed on the target system.
 
 | **Diretory**                     | **Source**   | **Target Description**       |
 |----------------------------------|--------------|-------------------------------|
-| /home/administrator/protobufs/   | https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.tar.gz | unzip / tar |
-| /home/administrator/protobufs/protobuf-3.6.1/python/google | n/a | target of symlink |
+| /usr/share/protobufs/   | https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protobuf-python-3.6.1.tar.gz | unzip / tar |
+| /usr/share/protobufs/protobuf-3.6.1/python/google | n/a | target of symlink |
 | /usr/lib/python2.7/dist-packages | symlink      |  google -> /home/administrator/protobufs/protobuf-3.6.1/python/google       |           
 | /usr/lib/python2.7/dist-packages/ansible/module_utils/network  | symlink      |  tetration -> /usr/share/ansible/module_utils/network/tetration  |
 | /usr/share/ansible               | ansible.cfg  | library        = /usr/share/ansible/ |
@@ -322,16 +338,11 @@ localhost | FAILED! => {
 | /usr/share/ansible/module_utils  | ansible.cfg  | module_utils = /usr/share/ansible/module_utils/ |
 | /usr/share/ansible/module_utils/network/tetration | cp |  tetration_network_policy_pb2.py from {{playbook_dir}}/library |
 
+
   
-
 ### Authenticating with the Kafka Broker
-
+```
 THIS SECTION INTENTIONALLY LEFT BLANK
-
-
-
-
-
 ```
 
 #### Examples

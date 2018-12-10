@@ -7,6 +7,9 @@
 #     author: joel.king@wwt.com
 #     written:  22 August 2018
 #     linter: flake8
+#         [flake8]
+#         max-line-length = 160
+#         ignore = E402
 #
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -52,7 +55,7 @@ options:
         required: false
         default: latest
         choices: ['earliest', 'latest']
-        
+
     timeout:
         description:
             - KafkaConsumer, consumer_timeout_ms, StopIteration if no message after 'n' ms.
@@ -115,7 +118,7 @@ EXAMPLES = '''
       timeout: 60000
       start_at: earliest
       start_at_offset: 43271
-        
+
 '''
 #
 #  System Imports
