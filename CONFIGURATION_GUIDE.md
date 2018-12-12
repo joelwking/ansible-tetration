@@ -350,7 +350,7 @@ After installation, apply your license via the GUI. Tested using Tower 3.3.2 and
 #### Inventory
 Because this solution runs in the control node, there is no requirement to create an inventory on the Ansible Tower machine. The default 'localhost' is sufficient. However, credentials must be downloaded from the Tetration GUI to authenticate with the Kafka Broker. This credential download also includes the Kafka Broker IP address and port number.
   
-### Authenticating with the Kafka Broker
+#### Authenticating with the Kafka Broker
 
 To access the Kafka Broker, download the certificates, name of the Kafka topic, broker IP address and port number.
 
@@ -366,6 +366,100 @@ producer-tnp-12.cert
 └── topic.txt
 ```
 Note: These **files are not encrypted!** Treat the contents as credentials, which they are.
+
+#### Encrypt the credentials with Ansible Vault
+
+
+```
+$ ansible-vault encrypt  KafkaConsumerPrivateKey.key --ask-vault
+New Vault password:
+Confirm New Vault password:
+Encryption successful
+```
+
+
+#### Store the credentials in Ansible Tower
+```json
+{
+    "id": 2,
+    "type": "credential",
+    "url": "/api/v2/credentials/2/",
+    "related": {
+        "named_url": "/api/v2/credentials/tetration_credentials++Vault+vault++Default/"
+
+    },
+    "name": "tetration_credentials",
+    "description": "joel.king@wwt.com",
+    "organization": 1,
+    "credential_type": 3,
+    "inputs": {
+        "vault_password": "$encrypted$",
+        "vault_id": ""
+    }
+}
+```
+
+#### Create a project in Ansible Tower
+
+```json
+{
+    "id": 6,
+    "type": "project",
+    "url": "/api/v2/projects/6/",
+    "related": {
+        "named_url": "/api/v2/projects/producer-tnp-12++Default/"
+    },
+    "name": "producer-tnp-12",
+    "description": "joel.king@wwt.com",
+    "local_path": "_6__producer_tnp_12",
+    "scm_type": "git",
+    "scm_url": "https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12.git",
+    "scm_clean": true,
+    "scm_delete_on_update": true,
+    "scm_update_on_launch": true,
+}
+```
+
+#### Create a job template in Ansible Tower
+```json
+{
+    "id": 7,
+    "type": "job_template",
+    "url": "/api/v2/job_templates/7/",
+    "related": {
+        "named_url": "/api/v2/job_templates/view_network_policy/",
+        "inventory": "/api/v2/inventories/1/",
+        "project": "/api/v2/projects/6/",
+        "vault_credential": "/api/v2/credentials/2/",
+        "credentials": "/api/v2/job_templates/7/credentials/",
+    },
+    "summary_fields": {
+        "inventory": {
+            "id": 1,
+            "name": "Demo Inventory"
+        },        
+        "credentials": [
+            {
+                "kind": "vault",
+                "credential_type_id": 3,
+                "description": "joel.king@wwt.com",
+                "id": 2,
+                "cloud": false,
+                "name": "tetration_credentials"
+            }
+        ]
+    },
+    "name": "view_network_policy",
+    "description": "joel.king@wwt.com",
+    "job_type": "run",
+    "inventory": 1,
+    "project": 6,
+    "playbook": "view_network_policy_decrypt.yml",
+    "vault_credential": 2
+}
+```
+
+
 
 #### Examples
 Source code for the TetrationNetworkPolicyProto definition file is also available from the Tetration appliance GUI, or can be downloaded from the tetration-exchange repo: https://github.com/tetration-exchange/pol-client-java/blob/master/proto/network_enforcement/tetration_network_policy.proto. 
