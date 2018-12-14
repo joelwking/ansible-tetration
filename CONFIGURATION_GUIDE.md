@@ -2,7 +2,7 @@
 # CONFIGURATION_GUIDE.md
 
 ## Network Policy Publisher 
-The Tetration Network Policy Publisher uses a Kafka message broker for publishing network policy, which are seralized using Google ProtoBuffers.
+The Tetration Network Policy Publisher uses a Kafka message broker for publishing network policy, which are serialized using Google ProtoBuffers.
 
 ### Kafka Python
 
@@ -347,8 +347,7 @@ https://docs.ansible.com/ansible-tower/latest/html/quickinstall/prepare.html)
 
 After installation, apply your license via the GUI. Tested using Tower 3.3.2 and Ansible 2.7.4.
 
-#### Inventory
-Because this solution runs in the control node, there is no requirement to create an inventory on the Ansible Tower machine. The default 'localhost' is sufficient. However, credentials must be downloaded from the Tetration GUI to authenticate with the Kafka Broker. This credential download also includes the Kafka Broker IP address and port number.
+
   
 #### Authenticating with the Kafka Broker
 
@@ -369,7 +368,6 @@ Note: These **files are not encrypted!** Treat the contents as credentials, whic
 
 #### Encrypt the credentials with Ansible Vault
 
-
 ```
 $ ansible-vault encrypt  KafkaConsumerPrivateKey.key --ask-vault
 New Vault password:
@@ -377,89 +375,126 @@ Confirm New Vault password:
 Encryption successful
 ```
 
+#### Configure Ansible Tower
 
-#### Store the credentials in Ansible Tower
-```json
-{
-    "id": 2,
-    "type": "credential",
-    "url": "/api/v2/credentials/2/",
-    "related": {
-        "named_url": "/api/v2/credentials/tetration_credentials++Vault+vault++Default/"
+Ansible Tower offers a GUI and API for configuration and management. Rather than document the Ansible Tower configuration using screen snapshots, the following uses tower-cli, a command line tool for Ansible Tower. It allows Tower commands to be run from the UNIX command line. 
 
-    },
-    "name": "tetration_credentials",
-    "description": "joel.king@wwt.com",
-    "organization": 1,
-    "credential_type": 3,
-    "inputs": {
-        "vault_password": "$encrypted$",
-        "vault_id": ""
-    }
-}
+##### Install tower-cli
+It is possible to install the tower-cli package on the control node running Ansible Tower. Alternately, use Vagrant and VirtualBox on a laptop to create a Linux instance.  The following is a sample `vagrantfile` which creates an ephemerial VM to configure the control node.
+```ruby
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+#
+# All Vagrant configuration for Ansible Tower CLI
+#
+Vagrant.configure(2) do |config|
+
+  config.vm.box = "ubuntu/xenial64"
+  config.vm.provision "shell", inline: <<-SHELL
+  sudo apt-get update
+  sudo apt-get install python-pip -y
+  sudo pip install ansible-tower-cli
+  SHELL
+end
+```
+Use `vagrant up` and when the VM is running, connect using  `vagrant ssh` and issue the commands in the next sections. When complete, exit the shell and issue `vagrant destroy` to destroy the VM.
+
+##### Set credentials
+In this example, the Tower control node is `ansible-tower-33.sandbox.wwtatc.local`. Specify the username and password used for administration.
+
 ```
 
-#### Create a project in Ansible Tower
+tower-cli config host ansible-tower-33.sandbox.wwtatc.local
+tower-cli config username admin
+tower-cli config password redacted
+tower-cli config verify_ssl  no
+```
+#### Store the vault credentials
+Previously Ansible Vault was used to encrypt the credentials downloaded from Tetration. Create a vault credential in Tower. The variable `credential-type` is set with a value of 3, which indicates a vault credential type.
 
-```json
-{
-    "id": 6,
-    "type": "project",
-    "url": "/api/v2/projects/6/",
-    "related": {
-        "named_url": "/api/v2/projects/producer-tnp-12++Default/"
-    },
-    "name": "producer-tnp-12",
-    "description": "joel.king@wwt.com",
-    "local_path": "_6__producer_tnp_12",
-    "scm_type": "git",
-    "scm_url": "https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12.git",
-    "scm_clean": true,
-    "scm_delete_on_update": true,
-    "scm_update_on_launch": true,
-}
+```
+tower-cli credential create  --name producer-tnp-12 \
+     --description joel.king@wwt.com \
+     --credential-type 3 \
+     --organization 1 \
+     --inputs '{"vault_password": "redacted", "vault_id": ""}'
+Resource changed.
+== =============== ===============
+id      name       credential_type
+== =============== ===============
+ 7 producer-tnp-12               3
+== =============== ===============
+```
+Make a note of the credential id number  from the command output. It will be needed in a subsequent step.
+
+#### Create a project
+Projects are associated with a repository containing playbooks and files. Review the sample repository at https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12. In step **Authenticating with the Kafka Broker**, the credentials, topic and broker IP address and port were downloaded from Tetration. The credentials were encrypted with Vault. Upload these files to your repo. Use the directory format conventions from the sample repository.
+
+Create the project.
+
+```
+ tower-cli project create --name producer-tnp-12 \
+ --description joel.king@wwt.com \
+ --scm-type git \
+ --scm-url  https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12.git \
+ --scm-branch  master \
+ --scm-clean true \
+ --scm-delete-on-update true \
+ --scm-update-on-launch true
+Resource changed.
+== =============== ======== ========================================================================= ====================
+id      name       scm_type                                  scm_url                                       local_path
+== =============== ======== ========================================================================= ====================
+13 producer-tnp-12 git      https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12.git _13__producer_tnp_12
+== =============== ======== ========================================================================= ====================
+```
+Make a note of the project id from the command output. It will be needed in a subsequent step.
+
+#### Inventory
+Because this solution runs in the control node, there is no requirement to create an inventory on the Ansible Tower machine. The default 'localhost' is sufficient. Either create an inventory or use the default inventory. You will need to specify an inventory id in a subsequent step.
+
+##### List available inventory
+Issue the following command to list all available inventory. Make a note of the appropriate inventory id.
+
+```
+tower-cli inventory list
+== ============== ============
+id      name      organization
+== ============== ============
+ 1 Demo Inventory            1
+== ============== ============
 ```
 
-#### Create a job template in Ansible Tower
-```json
-{
-    "id": 7,
-    "type": "job_template",
-    "url": "/api/v2/job_templates/7/",
-    "related": {
-        "named_url": "/api/v2/job_templates/view_network_policy/",
-        "inventory": "/api/v2/inventories/1/",
-        "project": "/api/v2/projects/6/",
-        "vault_credential": "/api/v2/credentials/2/",
-        "credentials": "/api/v2/job_templates/7/credentials/",
-    },
-    "summary_fields": {
-        "inventory": {
-            "id": 1,
-            "name": "Demo Inventory"
-        },        
-        "credentials": [
-            {
-                "kind": "vault",
-                "credential_type_id": 3,
-                "description": "joel.king@wwt.com",
-                "id": 2,
-                "cloud": false,
-                "name": "tetration_credentials"
-            }
-        ]
-    },
-    "name": "view_network_policy",
-    "description": "joel.king@wwt.com",
-    "job_type": "run",
-    "inventory": 1,
-    "project": 6,
-    "playbook": "view_network_policy_decrypt.yml",
-    "vault_credential": 2
-}
+#### Create a job template
+Create a job template to execute a playbook. The job template references the vault credentials, the project and the inventory. The playbook referenced must be present in the repository specified in the project.
+
+Substitute the project, inventory and credential id in the following configuration.
+```
+tower-cli job_template create --name view_network_policy \
+--description joel.king@wwt.com \
+--job-type run \
+--project 13 \
+--playbook view_network_policy_decrypt.yml \
+--vault-credential 7 \
+--inventory 1
+Resource changed.
+== =================== ========= ======= ===============================
+id        name         inventory project            playbook
+== =================== ========= ======= ===============================
+14 view_network_policy         1      13 view_network_policy_decrypt.yml
+== =================== ========= ======= ===============================
 ```
 
+#### Execute the playbook
+The job template can be executed from the Tower GUI or launched by
+```
+tower-cli job launch -J 14
+```
+The sample playbook returns the latest network policy published to the message bus and formats the output representing the CLI commands needed to create an access list on a Cisco ASA firewall. For each port and protocol in the policy you should see a debug message line which looks similar to the following.
 
+```
+"msg": "access-list OUTSIDE line 1 extended permit udp any object-group SERVERS eq 161",
+```
 
 #### Examples
 Source code for the TetrationNetworkPolicyProto definition file is also available from the Tetration appliance GUI, or can be downloaded from the tetration-exchange repo: https://github.com/tetration-exchange/pol-client-java/blob/master/proto/network_enforcement/tetration_network_policy.proto. 
