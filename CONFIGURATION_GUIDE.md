@@ -1,8 +1,17 @@
 
 # CONFIGURATION_GUIDE.md
 
+## Intended Audience
+This guide is a reference for installing the prerequisite software to install and execute the `tetration_network_policy` module on a control node running Ansible Engine and Ansible Tower. This guide does not describe how to configure Cisco Tetration, for that, refer to the documentation at www.cisco.com/go/tetration. 
+
+The Network Policy Publisher is a Tetration feature which augments the zero trust enforcement of policy on hosts using the enforcement agent, by publishing the policy to a a Kafka instance running on the Tetration cluster. Authentication of the clients is enabled by downloading Kafka client certificates, the assigned Kafka topic and the broker IP address and port number.
+
+The `tetration_network_policy` can be invoked from an Ansible playbook, retrieve the published policies, and then translate them to formats understood by security devices (firewalls and ACLs on routers) and load balancers.
+
+This approach provides defense in depth, by implementing the same policy on the end host as well as on network and security devices.
+
 ## Network Policy Publisher 
-The Tetration Network Policy Publisher uses a Kafka message broker for publishing network policy, which are serialized using Google ProtoBuffers.
+The Tetration Network Policy Publisher uses a Kafka message broker for publishing network policy, which are serialized using Google Protocol Buffers. For a client to consume these messages using Python, a Kafka Python package (SDK) is installed, along with the protocol buffer library. To compile the source protocol buffer definition file, the protocol buffer compiler is also installed. Installing the compiler is optional, as the complied source is included in this repository.
 
 ### Kafka Python
 
@@ -12,11 +21,11 @@ The Kafka Python [documentation](https://media.readthedocs.org/pdf/kafka-python/
 
 The KafaConsumer method requires Snappy for decompression. Python-snappy requires the Snappy C library. Installing `libsnappy-dev`, `kafka-python`, and `python-snappy` is required to execute the program.
 
-#### Install Ansible
-These instructions assume that Ansible has been installed to the target host. The software was developed using ansible 2.6.4
-and this configuration guide used ansible 2.7.4. Refer to the installation instructions for installing Ansible, at http://docs.ansible.com/ansible/intro_installation.html.
+#### Install Ansible Engine
+These instructions assume that Ansible has been installed to the target host. The software was developed using Ansible 2.6.4
+and this configuration guide was validated using Ansible 2.7.4. Refer to the installation instructions for installing Ansible, at http://docs.ansible.com/ansible/intro_installation.html.
 
-The development environment is running Ubuntu 16.04.05, refer to the output of  `lsb_release -a` to validate your release.
+The development environment is running Ubuntu 16.04.05, refer to the output of  `lsb_release -a` to validate your release. The following commands are used to install Ansible on Ubuntu.
 
 ```
 $ sudo apt-get install software-properties-common
@@ -26,7 +35,7 @@ $ sudo apt-get install ansible
 ```
 
 ### Installing Required Packages
-The following 'apt' and 'pip' packages and SDKs will need be installed to used this software. 
+The following 'apt' and 'pip' packages and SDKs are required used this software. 
 
 ```YAML
 - name: Installs packages for my development environment
@@ -48,7 +57,6 @@ The following 'apt' and 'pip' packages and SDKs will need be installed to used t
           - python-snappy                  # KafkaConsumer Snappy decompression (requires libsnappy-dev)  0.5.3
           - pydevd                         # Remote debugger for PyCharm 1.4.0 (Optional)
 
- 
 ```   
 
 ### Protocol Buffers
@@ -69,14 +77,13 @@ The .proto definition file `tetration_network_policy.proto` is used by the compi
         from google.protobuf import ...   
         # and so on
 ```
-
-The goal of this document is to configure the target Linux system to run Ansible, Ansible Tower and the software with all dependencies.
+For these import statements to gain access to the code of the imported module, the modules must be referenced from the default Python path(s). The following steps install, copy or create the appropriate symbolic links.
 
 #### Tetration .proto definition file  **REQUIRED**
 
-The protocol buffer source file used in solution development was cut 'n pasted from the Tetration applicance (version 2.3.1.41) at this URL, *https://<tetration_host>/documentation/ui/adm/policies.html#protobuf-definition-file* and saved as `files/tetration_network_policy.proto`.
+The protocol buffer source file used in solution development was cut 'n past'ed from the Tetration appliance (version 2.3.1.41) at this URL, *https://<tetration_host>/documentation/ui/adm/policies.html#protobuf-definition-file* and saved as `files/tetration_network_policy.proto`.
 
-This definition file is compiled by the protocol buffer compiler. The output generated is comprised of Python classes and methods to decode the policy generated by Tetration. The compiled protocol buffer is provided in the directory `/library`. You do not need to install the compiler and compile the .proto definition file. The instructions provided are for reference should you wish to create your own .proto definition file for other applications.
+This definition file is compiled by the protocol buffer compiler. The output generated is comprised of Python classes and methods to decode the policy generated by Tetration. The compiled protocol buffer is provided in the directory `/library`. You do not need to install the compiler and compile the .proto definition file. The instructions provided are for reference, should you wish to create your own .proto definition file for other applications.
 
 If you choose not to install and compiler and compile the source .proto file, simply copy `tetration_network_policy_pb2.py` from `library`  to  `/usr/share/ansible/module_utils/network/tetration` and `sudo touch __init__.py` in that directory.
 
@@ -92,13 +99,12 @@ $ sudo gunzip protobuf-python-3.6.1.tar.gz
 $ sudo tar xvf protobuf-python-3.6.1.tar
 $ sudo rm protobuf-python-3.6.1.tar
 ```
-Now version 3.6.1 of the protocol buffer library is at this directory.
+Version 3.6.1 of the protocol buffer library is at this directory:
 ```
 /usr/share/protobufs/protobuf-3.6.1
 ```
-
 #### Create the target directory **REQUIRED**
-You can either compile the source .proto file or download the compiled result, `tetration_network_policy_pb2.py` from `library`. In either case you must verify the Python module can be imported.
+You can either compile the source .proto file or download the compiled result, `tetration_network_policy_pb2.py` from `library`. In either case, you must verify the Python module can be imported.
 
 ```
 cd /usr/share/
@@ -154,10 +160,10 @@ This section documents how to compile a source .proto file and create the result
 protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/addressbook.proto
 ```
 
-In the following steps, you must create the target directory. You have the option to either compile the protocol definiton file `.proto`, or simply download the compiled result, the generated Python file.
+In the following steps, you must create the target directory. You have the option to either compile the protocol definition file `.proto`, or simply download the compiled result, the generated Python file.
 
 ##### Compile from source
-Follow these steps if you wish to comile from source.
+Follow these steps if you wish to compile from source.
 
 ###### Download the source file
 If you wish to compile the source file, download the `.proto` source file.
@@ -185,7 +191,7 @@ The protocol compiler generates a Python module which imports modules from the P
 ```
 export PYTHONPATH=/usr/share/protobufs/protobuf-3.6.1/python
 ```
-Invoke the interactive Python interpreter to verify compiled .proto file.
+Invoke the interactive Python interpreter to verify the compiled .proto file.
 ```
 $ cd /usr/share/ansible/module_utils/network/tetration/
 $ python
@@ -196,13 +202,13 @@ Type "help", "copyright", "credits" or "license" for more information.
 ```
 If the import statement raises an `ImportError` there is a likely an issue with the .proto file.
 
-##### View the documenation
+##### View the documentation
 Issue the following command to view the documentation of the compiled .proto file.
 ```
 $ pydoc tetration_network_policy_pb2
 ```
 
-##### Tutorial on using the Tetration Network Policy prototocol buffer
+##### Tutorial on using the Tetration Network Policy protocol buffer
 There are limited tutorials on using Python and protocol buffers. Protocol buffers are efficient by using integers instead of strings to represent keys and values. For example, the CatchAllPolicy for an intent is either ALLOW or DENY. These are values are transmitted between publisher and client as a value of 1 or 2.
 
 Review the `.proto` file, for example:
@@ -255,7 +261,6 @@ Enum IPAddressFamily has no name defined for value 3
 ```
 
 #### Ansible Configuration file
-
 The Ansible configuration file, `ansible.cfg` must specify a location to look for the `tetration_network_policy.py` module and the protocol buffer module, `tetration_network_policy_pb2.py`.
 
 Modify the `/etc/ansible/ansible.cfg` file to include:
@@ -272,6 +277,7 @@ $ chmod 755 tetration_network_policy.py
 ```
 
 ##### Verify configuration updates
+The configured module search path now references directory `/usr/share/ansible`.
 ```
 $ ansible --version
 ansible 2.7.4
@@ -281,12 +287,13 @@ ansible 2.7.4
   executable location = /usr/bin/ansible
   python version = 2.7.12 (default, Nov 12 2018, 14:36:49) [GCC 5.4.0 20160609]
 ```
-To verify Ansible can located the module, issue the `ansible-doc` command.
+Verify Ansible can located the module, issue the `ansible-doc` command.
 ```
 $ ansible-doc tetration_network_policy
 ```
 
 #### Create symbolic link for the Python Protocol Buffer library
+Creating a symbolic link provides a means to import the library and install multiple versions of the library.
 
 ```
 $ cd /usr/lib/python2.7/dist-packages
@@ -294,6 +301,7 @@ $ sudo ln -s /usr/share/protobufs/protobuf-3.6.1/python/google google
 ```
 
 #### Create symbolic link for the complied protocol buffer source file
+Creating this symbolic link enables referencing the Tetration protocol buffer definition.
 ```
 $ cd /usr/lib/python2.7/dist-packages/ansible/module_utils/network
 $ sudo ln -s /usr/share/ansible/module_utils/network/tetration tetration
@@ -346,8 +354,6 @@ Ansible engine has been installed to the control node and we have verified execu
 https://docs.ansible.com/ansible-tower/latest/html/quickinstall/prepare.html)
 
 After installation, apply your license via the GUI. Tested using Tower 3.3.2 and Ansible 2.7.4.
-
-
   
 #### Authenticating with the Kafka Broker
 
@@ -367,16 +373,16 @@ producer-tnp-12.cert
 Note: These **files are not encrypted!** Treat the contents as credentials, which they are.
 
 #### Encrypt the credentials with Ansible Vault
-
+Encrypting the credentials enables storing them within the version control system along with the playbooks to retrieve and apply the policy to network devices using the suite of Ansible network modules.
 ```
 $ ansible-vault encrypt  KafkaConsumerPrivateKey.key --ask-vault
 New Vault password:
 Confirm New Vault password:
 Encryption successful
 ```
+Make a note of the password, it will later need be stored as a credential on Ansible Tower.
 
 #### Configure Ansible Tower
-
 Ansible Tower offers a GUI and API for configuration and management. Rather than document the Ansible Tower configuration using screen snapshots, the following uses tower-cli, a command line tool for Ansible Tower. It allows Tower commands to be run from the UNIX command line. 
 
 ##### Install tower-cli
@@ -497,13 +503,12 @@ The sample playbook returns the latest network policy published to the message b
 ```
 
 #### Examples
-Source code for the TetrationNetworkPolicyProto definition file is also available from the Tetration appliance GUI, or can be downloaded from the tetration-exchange repo: https://github.com/tetration-exchange/pol-client-java/blob/master/proto/network_enforcement/tetration_network_policy.proto. 
+Source code for the TetrationNetworkPolicyProto definition file is available from the Tetration appliance GUI, or can be downloaded from the tetration-exchange repo: https://github.com/tetration-exchange/pol-client-java/blob/master/proto/network_enforcement/tetration_network_policy.proto. 
 
 Example code in the `tetration-exchange` repo:
 
 * [Policy consumer client implementation reference written in Go](https://github.com/tetration-exchange/pol-client-go)
 * [Tetration Network Policy Enforcement Client](https://github.com/tetration-exchange/pol-client-java)
-
 
 ## Author
 joel.king@wwt.com GitHub / GitLab @joelwking 

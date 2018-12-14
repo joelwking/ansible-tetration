@@ -23,6 +23,11 @@ RedHat has published the collateral from [AnsibleFest Austin 2018](https://www.a
 ### view_network_policy.yml
 This playbook retrieves network policy from the Tetration Network Policy Publisher and creates a file to view the results. It is a data visualization and debugging tool.
 
+### view_network_policy_decrypt.yml
+This playbook resides on GitLab, as [view_network_policy_decrypt.yml](https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12/blob/master/view_network_policy_decrypt.yml). The GitLab repo, https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12 is an example of how to organize credentials and playbooks for multiple applications, under a single 'group', [tetration-network-policy-publisher](https://gitlab.com/tetration-network-policy-publisher). For example, under the group, each application identifed by an Application Dependency Mapping (ADM), is identified by the topic assigned by Tetration. One example is the 'producer-tnp-12' repo in the group.
+
+This is a public repo and the credentials are AES256 encrypted with Ansible Vault. The playbook provides an example of how to decrypt and temporarily store the credentials on Tower, execute the playbook and then delete the decrypted files at the end of the playbook.
+
 ### aci_create_filters.yml
 The network policy returned from the publisher is used to create Filters and Filter entries in an ACI fabric. The AnsibleFest presentation includes screen snapshots of this use case.
 
