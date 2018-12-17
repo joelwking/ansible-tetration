@@ -19,6 +19,9 @@ On 2 November 2018, an update to the presentation was given to the WWT Network S
 
 RedHat has published the collateral from [AnsibleFest Austin 2018](https://www.ansible.com/resources/videos/ansiblefest-austin-2018) this session is at [https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming](https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming).
 
+## Configuration Guide
+This solution has been verified and tested using Ansible 2.7.4 running with Ansible Tower 3.3.2. The `CONFIGURATION_GUIDE.md` provides a reference for installing the software for the target environment. The repository referenced by the Ansible Tower project is at this URL: [https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12](https://gitlab.com/tetration-network-policy-publisher/producer-tnp-12).
+
 ## Playbooks
 ### view_network_policy.yml
 This playbook retrieves network policy from the Tetration Network Policy Publisher and creates a file to view the results. It is a data visualization and debugging tool.
