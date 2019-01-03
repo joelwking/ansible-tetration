@@ -361,11 +361,16 @@ To access the Kafka Broker, download the certificates, name of the Kafka topic, 
 
 Refer to [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy) specifically slide 21 for an overview of configuring the Tetration Network Policy Publisher. The URL to download the compressed tar file is `https://<tetration>/#/maintenance/lab_admin/datataps`. 
 
-The filename will be include the Kafka topic name, for example, `producer-tnp-12.cert.tar.gz`.  Uncompress and extract the files. The result should look like the following:
+The filename will be include the Kafka topic name, for example, `Policy-Stream-12-pub-vrf.cert.tar.gz`.  Uncompress and extract the files. 
 ```
-producer-tnp-12.cert
+$ mkdir policy-stream-12-pub-vrf.cert
+$ tar -xzvf Policy-Stream-12-pub-vrf.cert.tar.gz --directory policy-stream-12-pub-vrf.cert
+```
+The result should look like the following:
+```
+policy-stream-12-pub-vrf.cert
 ├── kafkaBrokerIps.txt
-├── KafkaCA.cert
+├── kafkaCA.cert
 ├── KafkaConsumerCA.cert
 ├── KafkaConsumerPrivateKey.key
 └── topic.txt
@@ -374,6 +379,8 @@ Note: These **files are not encrypted!** Treat the contents as credentials, whic
 
 #### Encrypt the credentials with Ansible Vault
 Encrypting the credentials enables storing them within the version control system along with the playbooks to retrieve and apply the policy to network devices using the suite of Ansible network modules.
+
+Issue the `ansible-vault` command for each of the the credential files, for example:
 ```
 $ ansible-vault encrypt  KafkaConsumerPrivateKey.key --ask-vault
 New Vault password:

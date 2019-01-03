@@ -145,7 +145,8 @@ import ansible.module_utils.network.tetration.tetration_network_policy_pb2 as tn
 # Constants
 #
 DEBUG = False
-TETRATION_VERSION = 'Version 2.3.1.41-PATCH-2.3.1.49'      # Program tested with this version of Tetration
+TETRATION_VERSION = ('Version 2.3.1.41-PATCH-2.3.1.49',    # Cisco TetrationOS Software tested version
+                     'Version 3.1.1.53-PATCH-3.1.1.55')
 API_VERSION = (0, 9)                                       # Required by KafkaConsumer, refer to SDK docs
 CLIENT_ID = 'NETWORK_POLICY'                               # Identifies this client, server side logging
 SSL = 'SSL'                                                # must be capitalized
