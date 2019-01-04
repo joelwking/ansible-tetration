@@ -31,6 +31,9 @@ This playbook resides on GitLab, as [view_network_policy_decrypt.yml](https://gi
 
 This is a public repo and the credentials are AES256 encrypted with Ansible Vault. The playbook provides an example of how to decrypt and temporarily store the credentials on Tower, execute the playbook and then delete the decrypted files at the end of the playbook.
 
+### asa_create_acl_decrypt.yml 
+This playbook resides on GitLab, as [asa_create_acl_decrypt.yml](https://gitlab.com/tetration-network-policy-publisher/policy-stream-12-pub-vrf/blob/master/asa_create_acl_decrypt.yml). It illustrates how to apply policy from Tetration to a Cisco ASA firewall as an access-list. The tenant name from the policy is used as the access-list name in the ASA configuration
+
 ### aci_create_filters.yml
 The network policy returned from the publisher is used to create Filters and Filter entries in an ACI fabric. The AnsibleFest presentation includes screen snapshots of this use case.
 
