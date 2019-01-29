@@ -6,8 +6,13 @@ This repository is a companion to the AnsibleFest 2018 network breakout session,
 The focus of the session illustrates using Ansible to facilitate installation of the software sensor on Linux hosts, how Cisco Tetration can be used as a dynamic inventory source for Ansible Playbooks and how policy generated from Tetration Application Dependency Mapping (ADM) Network Policy Publisher can be used to apply policy to a Cisco ACI fabric, Cisco ASA firewall, and other network devices.
 
 ## Technical Marketing Collateral
-### Blog
+### Blogs
 Refer to the [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post for a summary of the concepts presented in this session at the live event.
+
+Cisco has featured this solution in several blog posts published in the developer section of [blogs.cisco.com](https://blogs.cisco.com).
+
+* [Introducing Cisco DevNet Exchange](https://blogs.cisco.com/developer/introducing-devnet-exchange)
+* [Using Tetration for Application Security and Policy Enforcement](https://blogs.cisco.com/developer/tetration-for-security)
 
 ### Code Exchange
 Cisco DevNet Code exchange [links](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration) to this repository.
