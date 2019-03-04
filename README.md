@@ -15,7 +15,7 @@ Cisco has featured this solution in several blog posts published in the develope
 * [Using Tetration for Application Security and Policy Enforcement](https://blogs.cisco.com/developer/tetration-for-security)
 
 ### Code Exchange
-Cisco DevNet Code exchange [links](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration) to this repository.
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration)
 
 ### Slides and Video
 The AnsibleFest 2018 presentation slides are available on [Slideshare](https://www.slideshare.net/joelwking/using-ansible-tower-to-implement-security-policies-and-telemetry-streaming-for-hybrid-clouds).
