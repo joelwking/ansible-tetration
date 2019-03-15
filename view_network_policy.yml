@@ -31,9 +31,16 @@
 
   tasks:
 
+    - name: Select broker IP
+      # Depending on the type of Tetration, there can be one or more available Kafka brokers, select one.
+      # The input file could either contain '192.0.2.1:443' or '192.0.2.1:443,192.0.2.2:443,192.0.2.3:443'
+      set_fact:
+        kafka_broker: '{{ item }}'
+      with_random_choice: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt').split(',') }}"
+
     - name: Tetration Network Policy
       tetration_network_policy:
-        broker: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/kafkaBrokerIps.txt') }}"
+        broker: '{{ kafka_broker }}'
         topic: "{{ lookup('file', '{{ playbook_dir }}/files/certificates/{{ cert_directory }}/topic.txt') }}"
         cert_directory: "{{ playbook_dir }}/files/certificates/{{ cert_directory }}/"
         validate_certs: '{{ validate_certs }}'
