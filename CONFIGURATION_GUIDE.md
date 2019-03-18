@@ -377,6 +377,19 @@ policy-stream-12-pub-vrf.cert
 ```
 Note: These **files are not encrypted!** Treat the contents as credentials, which they are.
 
+#### Verify Reachability to Kafka Broker
+Depending on the type of Tetration deployment, you may have one or more Broker IP address / port numbers assigned in the *kafkaBrokerIps.txt* file. For example:
+
+```
+192.0.2.1:443,192.0.2.2:443,192.0.2.3:443 
+```
+Verify the Kafka Brokers will respond to the Ansible control node. OpenSSL provides the s_client tool to check the Broker TLS/SSL connection. Issue the following command to each of the Brokers listed in *kafkaBrokerIps.txt*.
+
+```bash
+$ openssl s_client  -connect 192.0.2.3:443  -tls1
+```
+Playbook `view_network_policy.yml` includes an example of how to randomly select one of the Brokers listed in the *kafkaBrokerIps.txt* file. Kafka replicates data across multiple Brokers for fault tolerance.
+
 #### Encrypt the credentials with Ansible Vault
 Encrypting the credentials enables storing them within the version control system along with the playbooks to retrieve and apply the policy to network devices using the suite of Ansible network modules.
 
