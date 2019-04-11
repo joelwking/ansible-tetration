@@ -9,10 +9,11 @@ The focus of the session illustrates using Ansible to facilitate installation of
 ### Blogs
 Refer to the [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post for a summary of the concepts presented in this session at the live event.
 
-Cisco has featured this solution in several blog posts published in the developer section of [blogs.cisco.com](https://blogs.cisco.com).
+Cisco has featured this solution in several blog posts published in the developer section of [blogs.cisco.com](https://blogs.cisco.com) in [ComputerWeekly.com](https://www.computerweekly.com) and at DevNet Create 2019.
 
 * [Introducing Cisco DevNet Exchange](https://blogs.cisco.com/developer/introducing-devnet-exchange)
 * [Using Tetration for Application Security and Policy Enforcement](https://blogs.cisco.com/developer/tetration-for-security)
+* [Coders and developers: The new heroes of the network?](https://www.computerweekly.com/news/252457087/Coders-and-developers-the-new-heroes-of-the-network)
 
 ### Code Exchange
 [![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration)
