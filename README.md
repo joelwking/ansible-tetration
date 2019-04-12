@@ -1,35 +1,49 @@
 # ansible-tetration
 Ansible interface to Cisco Tetration Network Policy Publisher
 
-This repository is a companion to the AnsibleFest 2018 network breakout session, *Using Ansible Tower to implement security policies and telemetry streaming for hybrid clouds*. 
+This solution exposes the security policy generated from Tetration Analytics Application Dependency Mapping (ADM) Network Policy Publisher to data center switches, firewalls, load balancers and other network devices supported by the Ansible network modules.  Ansible playbooks can call the module `tetration_network_policy` to retrieve policy from the Tetration Kafka broker. The module returns the policy to the playbook as *ansible_facts* - which can be referenced by subsequent tasks to apply the policy to devices, write it to a file, or load it to CMDB for reference.
 
-The focus of the session illustrates using Ansible to facilitate installation of the software sensor on Linux hosts, how Cisco Tetration can be used as a dynamic inventory source for Ansible Playbooks and how policy generated from Tetration Application Dependency Mapping (ADM) Network Policy Publisher can be used to apply policy to a Cisco ACI fabric, Cisco ASA firewall, and other network devices.
+## DevNet Code Exchange
+This repository is featured on the Cisco DevNet Code Exchange.
 
-## Collateral
-### Blogs
-Refer to the [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post for a summary of the concepts presented in this session at the live event.
+[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration)
 
-Cisco has featured this solution in several blog posts published in the developer section of [blogs.cisco.com](https://blogs.cisco.com) in [ComputerWeekly.com](https://www.computerweekly.com) and at DevNet Create 2019.
+## Articles and Blogs
+Cisco has featured this solution in several blog posts published in the developer section of [blogs.cisco.com](https://blogs.cisco.com) and in [ComputerWeekly.com](https://www.computerweekly.com) leading to DevNet Create 2019.
 
 * [Introducing Cisco DevNet Exchange](https://blogs.cisco.com/developer/introducing-devnet-exchange)
 * [Using Tetration for Application Security and Policy Enforcement](https://blogs.cisco.com/developer/tetration-for-security)
 * [Coders and developers: The new heroes of the network?](https://www.computerweekly.com/news/252457087/Coders-and-developers-the-new-heroes-of-the-network)
 
-### Code Exchange
-[![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/joelwking/ansible-tetration)
+## DevNet Create 2019
 
-### Slides and Video
+At [devnetcreate.io](https://devnetcreate.io) this solution is part of the Tech Talk on Wednesday Apr 24, 2019 2:20pm - 2:40pm at the Computer History Museum titled *Analytics for Application Security and Policy Enforcement in Cloud Managed Networks*.
+
+## Ansible Durham Meetup
+
+[*Enabling policy migration in the Data Center with Ansible*](https://www.meetup.com/Ansible-Durham/events/260264063/) - Wednesday, April 17, 2019
+
+The internal World Wide Technology IT department is migrating from a traditional Nexus fabric to Application Centric Infrastructure (ACI). This talk describes how Ansible is used to migrate policy to, and automate the configuration of, the new data center fabric.
+
+## AnsibleFest Austin 2018 
+This repository is a companion to the AnsibleFest 2018 network breakout session, *Using Ansible Tower to implement security policies and telemetry streaming for hybrid clouds*. 
+
+The focus of the session illustrates using Ansible to facilitate installation of the software sensor on Linux hosts, how Cisco Tetration can be used as a dynamic inventory source for Ansible Playbooks and how policy generated from Tetration Application Dependency Mapping (ADM) Network Policy Publisher can be used to apply policy to a Cisco ACI fabric, Cisco ASA firewall, and other network devices.
+
+A recap of AnsibleFest in this [blog](https://www.wwt.com/all-blog/ansible-tower-implementing-security-policy) post summarizes the concepts presented in this session at the live event.
+
 The AnsibleFest 2018 presentation slides are available on [Slideshare](https://www.slideshare.net/joelwking/using-ansible-tower-to-implement-security-policies-and-telemetry-streaming-for-hybrid-clouds).
 
 On 2 November 2018, an update to the presentation was given to the WWT Network Solutions virtual team meeting, [Using Tetration for application security and policy enforcement in multi-vendor environments](https://www.slideshare.net/joelwking/using-tetration-for-application-security-and-policy-enforcement-in-multivendor-environments). A [recording](https://vimeo.com/298660860) of this session is available.
 
-RedHat has published the collateral from [AnsibleFest Austin 2018](https://www.ansible.com/resources/videos/ansiblefest-austin-2018) this session is at [https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming](https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming).
+Red Hat has published the collateral from [AnsibleFest Austin 2018](https://www.ansible.com/resources/videos/ansiblefest-austin-2018) this session is at [https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming](https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming).
 
 ## Configuration Guide
 This solution has been verified and tested using Ansible 2.7.4 running with Ansible Tower 3.3.2. The `CONFIGURATION_GUIDE.md` provides a reference for installing the software for the target environment. The group referenced by Ansible Tower 'projects' is at this URL: [https://gitlab.com/tetration-network-policy-publisher](https://gitlab.com/tetration-network-policy-publisher).
 
 ## Playbooks
 Several sample Ansible playbooks are included and are described in the following section.
+
 ### view_network_policy.yml
 This playbook retrieves network policy from the Tetration Network Policy Publisher and creates a file to view the results. It is a data visualization and debugging tool.
 
@@ -62,4 +76,4 @@ The file `sensors.ini` is used to identify the target Tetration cluster and othe
 Tetration publishes policy to the Kafka message buffer encoded as protocol buffers. Protobufs provide better speed and efficiency for processing large amounts of data between publisher and subscriber. The source file `files/tetration_network_policy.proto` is the protobuf declaration of Tetration Network Policy's data structures published to Kafka. This file is compiled and imported by the module `tetration_network_policy.py`.
 
 ## Author
-Joel W. King joel.king@wwt.com GitHub: @joelwking Principal Architect at World Wide Technology
+Joel W. King joel.king@wwt.com GitHub/GitLab: @joelwking Principal Architect at World Wide Technology
