@@ -17,7 +17,11 @@ Cisco has featured this solution in several blog posts published in the develope
 
 ## DevNet Create 2019
 
-At [devnetcreate.io](https://devnetcreate.io) this solution is part of the Tech Talk on Wednesday Apr 24, 2019 2:20pm - 2:40pm at the Computer History Museum titled *Analytics for Application Security and Policy Enforcement in Cloud Managed Networks*.
+At [devnetcreate.io](https://devnetcreate.io) this solution is part of the Tech Talk on Wednesday Apr 24, 2019 2:20pm - 2:40pm at the Computer History Museum titled *Analytics for Application Security and Policy Enforcement in Cloud Managed Networks*. The presentation is available on SlideShare at [https://www.slideshare.net/joelwking/analytics-for-application-security-and-policy-enforcement-in-cloud-managed-networks](https://www.slideshare.net/joelwking/analytics-for-application-security-and-policy-enforcement-in-cloud-managed-networks).
+
+Development of this solution gained recognition as a DevNet Creator community contributor during the [Key Note](https://youtu.be/XyK_8ethwNk?t=4601) session.
+
+There is a video interview hosted by Silvia K. Spiva, community manager DevNet with [DevNet Creator Joel King](https://youtu.be/mxn_zxmhe3s).
 
 ## Ansible Durham Meetup
 
