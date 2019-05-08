@@ -25,9 +25,11 @@ There is a video interview hosted by Silvia K. Spiva, community manager DevNet w
 
 ## Ansible Durham Meetup
 
-[*Enabling policy migration in the Data Center with Ansible*](https://www.meetup.com/Ansible-Durham/events/260264063/) - Wednesday, April 17, 2019
+[*Enabling policy migration in the Data Center with Ansible*](https://www.meetup.com/Ansible-Durham/events/260264063/) - Wednesday, April 17, 2019 - [Slides](https://www.slideshare.net/joelwking/enabling-policy-migration-in-the-data-center-with-ansible)
 
 The internal World Wide Technology IT department is migrating from a traditional Nexus fabric to Application Centric Infrastructure (ACI). This talk describes how Ansible is used to migrate policy to, and automate the configuration of, the new data center fabric.
+
+
 
 ## AnsibleFest Austin 2018 
 This repository is a companion to the AnsibleFest 2018 network breakout session, *Using Ansible Tower to implement security policies and telemetry streaming for hybrid clouds*. 
