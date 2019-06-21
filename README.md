@@ -34,8 +34,6 @@ There is a video interview hosted by Silvia K. Spiva, community manager DevNet w
 
 The internal World Wide Technology IT department is migrating from a traditional Nexus fabric to Application Centric Infrastructure (ACI). This talk describes how Ansible is used to migrate policy to, and automate the configuration of, the new data center fabric.
 
-
-
 ## AnsibleFest Austin 2018 
 This repository is a companion to the AnsibleFest 2018 network breakout session, *Using Ansible Tower to implement security policies and telemetry streaming for hybrid clouds*. 
 
@@ -51,6 +49,15 @@ Red Hat has published the collateral from [AnsibleFest Austin 2018](https://www.
 
 ## Configuration Guide
 This solution has been verified and tested using Ansible 2.7.4 running with Ansible Tower 3.3.2. The `CONFIGURATION_GUIDE.md` provides a reference for installing the software for the target environment. The group referenced by Ansible Tower 'projects' is at this URL: [https://gitlab.com/tetration-network-policy-publisher](https://gitlab.com/tetration-network-policy-publisher).
+
+## Plugins
+To extend the functionality of the Network Policy Publisher, included is an Ansible Lookup Plugin `tetration_scope`, which uses the Tetration REST API to return one or more Scopes (or AppScopes) to enrich data from the Network Policy Publisher.
+
+Refer to [Adding modules and plugins locally](https://docs.ansible.com/ansible/latest/dev_guide/developing_locally.html) to install `tetration_scope` on your local system. Once installed, review the documentation by referring to the documentation.
+
+```bash
+$ ansible-doc -t lookup tetration_scope
+```
 
 ## Playbooks
 Several sample Ansible playbooks are included and are described in the following section.
