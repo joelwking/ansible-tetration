@@ -1,0 +1,13 @@
+ansible-tetration
+Copyright (c) 2019 World Wide Technology
+All rights reserved.
+
+This project includes software developed at World Wide Technology
+
+This project includes:
+
+   - kafka-python  Python client for the Apache Kafka, License: Apache Software License (Apache License 2.0) Author: Dana Powers
+   - pydevd        PyDev.Debugger (used in PyDev, PyCharm and VSCode Python), License: Eclipse Public License 1.0 (EPL-1.0) (EPL (Eclipse  
+                   Public License)) Author: Fabio Zadrozny and others
+   - Ansible       an open-source software provisioning, configuration management tool, License: Proprietary / GNU General Public License
+   - tetpyclient   Python API Client for Tetration Analytics,  License: Cisco API License Author: Cisco Tetration Analytics

@@ -65,7 +65,7 @@ options:
     api_cfile:
         description:
           - The name of a JSON file with the `api_key` and `api_secret` for authentication
-          - Either these credendials must be specified above or the credential filename specified.
+          - Either these credentials must be specified above or the credential filename specified.
         required: true
 
 author:
