@@ -460,7 +460,7 @@ Tue Jul  2 12:28:29 2019 count:11 message_offset:4967 len(value):7
 ```
 You may need to increase the *timeout* value to receive messages. In the previous example, twelve messages were returned, the message offset value and the length of the message value is displayed. This validates that the control node can reach the broker and policy is being published to the broker.
 
-If the wrong *topic* is specified, no messages will be returned. In the following example, the correct topic is *Policy-Stream-9* but *Policy_Stream-99* was specified. 
+If the wrong *topic* is specified, no messages will be returned. In the following example, the correct topic is *Policy-Stream-9* but *Policy-Stream-99* was specified. 
 
 ```bash
 administrator@flint:/tmp/Policy-Stream-9-ACI-Multi.cert$ python2.7 kafka_debugger.py ./kafka_debugger.json
@@ -494,9 +494,9 @@ Tue Jul  2 12:30:27 2019 ...waiting for Kafka messages
 Tue Jul  2 12:31:27 2019 ...no messages returned within timeout of 60000 ms
 
 ```
-Note that the program was able to successfully connect to the broker, and the broker indicated the available topic correctly, but no messages were returned because the *topic* was incorrect.
+Note the program was able to successfully connect to the broker, and the broker indicated the available topic correctly, but no messages were returned because the *topic* specified in the Subscription was incorrect.
 
-If the port number or IP address are incorrect, or a firewall is blocking connectivity to the broker, the program will hang. Terminate with CTL + c.
+If the port number or IP address are incorrect, or a firewall is blocking connectivity to the broker, the program will hang. Terminate with CTL + c. This type of connectivity failure should have been identified using the `openssl` command shown previously.
 
 #### Encrypt the credentials with Ansible Vault
 Encrypting the credentials enables storing them within the version control system along with the playbooks to retrieve and apply the policy to network devices using the suite of Ansible network modules.
