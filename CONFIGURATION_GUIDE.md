@@ -390,6 +390,114 @@ $ openssl s_client  -connect 192.0.2.3:443  -tls1
 ```
 Playbook `view_network_policy.yml` includes an example of how to randomly select one of the Brokers listed in the *kafkaBrokerIps.txt* file. Kafka replicates data across multiple Brokers for fault tolerance.
 
+#### Verify messages are being published to the Kafka Broker
+For debugging purposes and to verify that Tetration is configured to export policy to the broker, `library/kafka_debugger.py` is used to establish that messages are being written to the message bus. This program relies on Python methods and classes from `library/tetration_network_policy.py` but does not have any dependency on Ansible or protobufs.
+
+The only dependency is *KafkaConsumer* from the Kafka Python package and access to `library/tetration_network_policy.py`.  Note: you may need to set PYTHONPATH (`export PYTHONPATH="/usr/share/ansible"`) to locate `library/tetration_network_policy.py`.
+
+Create a JSON file to pass the required parameters to the program. This file is named `kafka_debugger.json`.
+
+```json
+{
+"cert_directory": "/tmp/Policy-Stream-9-ACI-Multi.cert/",
+"validate_certs": "no",
+"topic": "Policy-Stream-9",
+"broker": "10.253.239.14:443",
+"certificate_name": "KafkaConsumerCA.cert",
+"private_key": "KafkaConsumerPrivateKey.key",
+"timeout" : 60000,
+"start_at": "latest",
+"start_at_offset": 0
+}
+
+```
+You can create multiple files with different values for the broker and timeout values.  The program displays the parameter values and also the beginning and ending message offsets. If you see the Python dictionary *ansible_facts* output, the program has successfully connected to the Kafka broker and sent and received control messages. 
+
+Execute the program and specify the name of the JSON file as argument 1.
+
+```bash
+administrator@flint:/tmp/Policy-Stream-9-ACI-Multi.cert$ python2.7 kafka_debugger.py ./kafka_debugger.json
+{
+    "broker": "10.253.239.14:443",
+    "cert_directory": "/tmp/Policy-Stream-9-ACI-Multi.cert/",
+    "certificate_name": "KafkaConsumerCA.cert",
+    "private_key": "KafkaConsumerPrivateKey.key",
+    "start_at": "latest",
+    "start_at_offset": 0,
+    "timeout": 60000,
+    "topic": "Policy-Stream-9",
+    "validate_certs": false
+}
+{
+    "ansible_facts": {
+        "beginning_offsets": "{TopicPartition(topic=u'Policy-Stream-9', partition=0): 364}",
+        "consumer_debug": [
+            "All the topics available :set([u'Policy-Stream-9'])",
+            "Subscription:set([u'Policy-Stream-9'])",
+            "Partitions for topic:set([0])",
+            "TopicPartitions:set([TopicPartition(topic=u'Policy-Stream-9', partition=0)])"
+        ],
+        "end_offsets": "{TopicPartition(topic=u'Policy-Stream-9', partition=0): 4956}",
+        "start_at_offset": 0
+    }
+}
+
+Tue Jul  2 12:25:30 2019 ...waiting for Kafka messages
+Tue Jul  2 12:25:59 2019 count:0 message_offset:4956 len(value):8368
+Tue Jul  2 12:25:59 2019 count:1 message_offset:4957 len(value):7
+Tue Jul  2 12:26:39 2019 count:2 message_offset:4958 len(value):8368
+Tue Jul  2 12:26:39 2019 count:3 message_offset:4959 len(value):7
+Tue Jul  2 12:27:09 2019 count:4 message_offset:4960 len(value):8368
+Tue Jul  2 12:27:09 2019 count:5 message_offset:4961 len(value):7
+Tue Jul  2 12:27:49 2019 count:6 message_offset:4962 len(value):8368
+Tue Jul  2 12:27:49 2019 count:7 message_offset:4963 len(value):7
+Tue Jul  2 12:28:19 2019 count:8 message_offset:4964 len(value):8368
+Tue Jul  2 12:28:19 2019 count:9 message_offset:4965 len(value):7
+Tue Jul  2 12:28:29 2019 count:10 message_offset:4966 len(value):8368
+Tue Jul  2 12:28:29 2019 count:11 message_offset:4967 len(value):7
+
+
+```
+You may need to increase the *timeout* value to receive messages. In the previous example, twelve messages were returned, the message offset value and the length of the message value is displayed. This validates that the control node can reach the broker and policy is being published to the broker.
+
+If the wrong *topic* is specified, no messages will be returned. In the following example, the correct topic is *Policy-Stream-9* but *Policy_Stream-99* was specified. 
+
+```bash
+administrator@flint:/tmp/Policy-Stream-9-ACI-Multi.cert$ python2.7 kafka_debugger.py ./kafka_debugger.json
+{
+    "broker": "10.253.239.14:443",
+    "cert_directory": "/tmp/Policy-Stream-9-ACI-Multi.cert/",
+    "certificate_name": "KafkaConsumerCA.cert",
+    "private_key": "KafkaConsumerPrivateKey.key",
+    "start_at": "latest",
+    "start_at_offset": 0,
+    "timeout": 60000,
+    "topic": "Policy-Stream-99",
+    "validate_certs": false
+}
+{
+    "ansible_facts": {
+        "beginning_offsets": "{}",
+        "consumer_debug": [
+            "All the topics available :set([u'Policy-Stream-9'])",
+            "Subscription:set([u'Policy-Stream-99'])",
+            "Partitions for topic:None",
+            "TopicPartitions:set([])"
+        ],
+        "end_offsets": "{}",
+        "start_at_offset": 0
+    }
+}
+
+Tue Jul  2 12:30:27 2019 ...waiting for Kafka messages
+
+Tue Jul  2 12:31:27 2019 ...no messages returned within timeout of 60000 ms
+
+```
+Note that the program was able to successfully connect to the broker, and the broker indicated the available topic correctly, but no messages were returned because the *topic* was incorrect.
+
+If the port number or IP address are incorrect, or a firewall is blocking connectivity to the broker, the program will hang. Terminate with CTL + c.
+
 #### Encrypt the credentials with Ansible Vault
 Encrypting the credentials enables storing them within the version control system along with the playbooks to retrieve and apply the policy to network devices using the suite of Ansible network modules.
 
