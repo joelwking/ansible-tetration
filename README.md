@@ -14,6 +14,7 @@ Cisco has featured this solution in several blog posts published in the develope
 * [Introducing Cisco DevNet Exchange](https://blogs.cisco.com/developer/introducing-devnet-exchange)
 * [Using Tetration for Application Security and Policy Enforcement](https://blogs.cisco.com/developer/tetration-for-security)
 * [Coders and developers: The new heroes of the network?](https://www.computerweekly.com/news/252457087/Coders-and-developers-the-new-heroes-of-the-network)
+* [Interview with DevNet Creator – Joel W. King](https://blogs.cisco.com/developer/devnet-creator-joel-king)
 
 ## DevNet Create 2019
 
@@ -48,7 +49,10 @@ On 2 November 2018, an update to the presentation was given to the WWT Network S
 Red Hat has published the collateral from [AnsibleFest Austin 2018](https://www.ansible.com/resources/videos/ansiblefest-austin-2018) this session is at [https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming](https://www.ansible.com/using-ansible-tower-to-implement-security-policies-telemetry-streaming).
 
 ## Configuration Guide
-This solution has been verified and tested using Ansible 2.7.4 running with Ansible Tower 3.3.2. The `CONFIGURATION_GUIDE.md` provides a reference for installing the software for the target environment. The group referenced by Ansible Tower 'projects' is at this URL: [https://gitlab.com/tetration-network-policy-publisher](https://gitlab.com/tetration-network-policy-publisher).
+This solution has been verified and tested using Ansible 2.8.1 running with Ansible Tower 3.5.0. The `CONFIGURATION_GUIDE.md` provides a reference for installing the software for the target environment. The group referenced by Ansible Tower 'projects' is at this URL: [https://gitlab.com/tetration-network-policy-publisher](https://gitlab.com/tetration-network-policy-publisher).
+
+## Kafka Debugger
+To aid in validating messages are being published, `library/kafka_debugger.py` has been developed. The program uses Python classes and methods from `library/tetration_network_policy.py` to attach to the Kafka broker address and report the beginning and ending offset counters, the available topic(s), and the message offset number and length of returned messages. Refer to the `CONFIGURATION_GUIDE.md`.
 
 ## Plugins
 To extend the functionality of the Network Policy Publisher, included is an Ansible Lookup Plugin `tetration_scope`, which uses the Tetration REST API to return one or more Scopes (or AppScopes) to enrich data from the Network Policy Publisher.
