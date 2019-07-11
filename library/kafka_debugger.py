@@ -26,6 +26,7 @@ import ssl
 import time
 import json
 import sys
+import binascii
 
 DEBUG = True
 CLIENT_ID = 'NETWORK_POLICY'
@@ -47,7 +48,7 @@ def main(params, iterations=10):
 
     print("\n{} ...waiting for Kafka messages".format(time.asctime()))
     for count, message in enumerate(input_data):
-        print("%s count:%d message_offset:%d len(value):%s" % (time.asctime(), count, message.offset, len(message.value)))
+        print("{} count:{} message_offset:{} length(value):{} value:{}").format(time.asctime(), count, message.offset, len(message.value), binascii.hexlify(message.value)[:32])
         if count > iterations:
             return
     print("\n{} ...no messages returned within timeout of {} ms".format(time.asctime(), params.get('timeout')))
@@ -57,7 +58,6 @@ def main(params, iterations=10):
 if __name__ == "__main__":
     """
          Create a JSON file with the key, values shown below and specify the file name as arg 1
-         You must code a trailing slash on the directory.
     """
     params = {
               "cert_directory": "/tmp/policy-stream-12-pub-vrf/files/certificates/policy-stream-12-pub-vrf.cert/",
@@ -78,9 +78,13 @@ if __name__ == "__main__":
             params = json.loads(jsonfile.read())
             jsonfile.close()
         except IOError:
-            print "input file: %s not found!" % sys.argv[1]
+            print("input file:{} not found!".format(sys.argv[1]))
             sys.exit(1)
 
+    # Override and correct user input
     params['validate_certs'] = False
+
+    if not params.get('cert_directory').endswith('/'):
+        params['cert_directory'] = '{}/'.format(params['cert_directory'])
 
     main(params)
