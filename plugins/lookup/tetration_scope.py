@@ -41,6 +41,12 @@ options:
           - Non keyword argument which specifies one or more scope ids or the keyword 'all'
         required: true
 
+    not_found:
+        description:
+          - The value to return if the scope_id is not found
+        required: false
+        default: UNKNOWN
+
     api_host:
         description:
           - The hostname or IP address of the Tetration cluster
@@ -91,6 +97,11 @@ EXAMPLES = """
       set_fact:
         scope_id_two: "{{ query('tetration_scope', '5c9a9926497d4f7f0b9dbc07', '5c50bd60497d4f06cc9dbc1f', api_host=tet.host, api_cfile=cfile)  }}"
 
+    - name: Create associative array of the id as key and short_names as values of the providers
+      set_fact: 
+        providers:  "{{ providers | combine( {item.provider_filter_id: query('tetration_scope', item.provider_filter_id, api_host=tetration, api_cfile=api_file, not_found='EPG-WWT-EXT')[0].short_name } ) }}"
+      loop: "{{ tnp.ansible_facts.intents }}"  
+
   when using a credential file, it should be in a form as follows:
 
   {
@@ -124,7 +135,7 @@ class LookupModule(LookupBase):
         Ansible Plugin:Lookup  Return Application Scopes from Tetration API
     """
 
-    DEFAULT = dict(short_name='CLUSTER', name='CLUSTER', description='Scope Id: Not Found')
+    DEFAULT = dict(short_name='UNKNOWN', name='UNKNOWN', description='Scope Id: Not Found')
     NOTFOUND = (404, 403)
     ALL = 'ALL'
 
@@ -141,6 +152,10 @@ class LookupModule(LookupBase):
 
         api_host = 'https://{}'.format(kwargs.get('api_host', '192.0.2.1'))
         api_verify = kwargs.get('api_verify', False)
+
+        not_found = LookupModule.DEFAULT
+        if kwargs.get('not_found'):
+            not_found['short_name'] = not_found['name'] = kwargs.get('not_found')
 
         # Either specify
         api_secret = kwargs.get('api_secret', '')
@@ -171,7 +186,7 @@ class LookupModule(LookupBase):
         if ids[0].upper() == LookupModule.ALL:
             return self.all_scopes(restclient)
         else:
-            return self.specific_scopes(restclient, ids)
+            return self.specific_scopes(restclient, ids, not_found)
 
     def all_scopes(self, restclient):
         """
@@ -186,7 +201,7 @@ class LookupModule(LookupBase):
 
         return response.json()
 
-    def specific_scopes(self, restclient, ids):
+    def specific_scopes(self, restclient, ids, not_found):
         """
             Return a list of one or more scopes specified in the list 'ids'
         """
@@ -199,7 +214,7 @@ class LookupModule(LookupBase):
                 raise AnsibleError('Connection timeout for {}'.format(restclient.server_endpoint))
 
             if rc.status_code in LookupModule.NOTFOUND:
-                response.append(LookupModule.DEFAULT)
+                response.append(not_found)
             else:
                 response.append(rc.json())
 
