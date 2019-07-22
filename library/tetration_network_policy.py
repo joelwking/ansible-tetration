@@ -59,8 +59,15 @@ options:
     timeout:
         description:
             - KafkaConsumer, consumer_timeout_ms, StopIteration if no message after 'n' ms.
-            - Tetration generates a policy enforcement every minute, or 60,000 ms.
+            - Tetration generates a policy enforcement approximately every minute, or 60,000 ms.
         default: 65535
+        required: false
+
+    max_partition_fetch_bytes:
+        description:
+            - The maximum amount of data per-partition the server will return. When increasing this value,
+            - you may also need to increase the memory of the control node executing the playbook.
+        default: 1048576
         required: false
 
     cert_directory:
@@ -118,6 +125,7 @@ EXAMPLES = '''
       timeout: 60000
       start_at: earliest
       start_at_offset: 43271
+      max_partition_fetch_bytes: 8388608
 
 '''
 #
@@ -153,6 +161,7 @@ SSL = 'SSL'                                                # must be capitalized
 KAFKA_CONSUMER_CA = 'KafkaConsumerCA.cert'                 # This file contains the KafkaConsumer certificate
 KAFKA_PRIVATE_KEY = 'KafkaConsumerPrivateKey.key'          # This file contains the Private Key for the Kafka Consumer
 AUTOCOMMIT = True
+MAX_PARTITION_FETCH_BYTES = 1024 * 1024                    # Default: 1M
 
 
 class PolicySet(object):
@@ -244,6 +253,7 @@ def create_consumer(args, policy):
                              auto_offset_reset=args.get('start_at'),    # consume earliest or latest available msgs
                              enable_auto_commit=AUTOCOMMIT,             # autocommit offsets?
                              consumer_timeout_ms=args.get('timeout'),   # StopIteration if no message after 'n' seconds
+                             max_partition_fetch_bytes=args.get('max_partition_fetch_bytes'),
                              security_protocol=SSL,
                              ssl_context=create_ssl_context(args)
                              )
@@ -422,6 +432,7 @@ def main():
             timeout=dict(default=65535, type='int', required=False),
             start_at=dict(choices=['latest', 'earliest'], default='latest', required=False),
             start_at_offset=dict(default=0, type='int', required=False),
+            max_partition_fetch_bytes=dict(default=MAX_PARTITION_FETCH_BYTES, type='int', required=False),
             private_key=dict(default=KAFKA_PRIVATE_KEY, required=False),
             certificate_name=dict(default=KAFKA_CONSUMER_CA, required=False),
             cert_directory=dict(required=True),
