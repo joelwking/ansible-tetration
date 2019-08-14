@@ -62,6 +62,11 @@ Refer to [Adding modules and plugins locally](https://docs.ansible.com/ansible/l
 ```bash
 $ ansible-doc -t lookup tetration_scope
 ```
+## Ancillary Modules
+In addition to extracting policy from the Kafka broker, the Tetration API provides access to detailed application data relating to application dependency mapping.
+
+### tetration_application
+This module returns the detailed data associated with a specified application name using the Tetration API. It provides an alternative viewpoint to the Network Policy Publisher. Refer to `library/tetration_application.py` for more information.
 
 ## Playbooks
 Several sample Ansible playbooks are included and are described in the following section.
