@@ -37,7 +37,7 @@ options:
         required: true
 
     version:
-        description: 
+        description:
             - A version in the form of ‘v10’ or ‘p10’, defaults to ‘latest’.
         required: false
         default: 'latest'
@@ -87,7 +87,7 @@ EXAMPLES = '''
 #
 #  System Imports
 #
-import json
+pass
 #
 #  Application Imports
 #
@@ -96,7 +96,7 @@ try:
     HAS_TETPYCLIENT = True
 except ImportError:
     pass
-    
+
 #
 #  Ansible Imports
 #
@@ -116,19 +116,19 @@ POLICY_KEYWORDS = ('absolute_policies', 'default_policies')
 HIGH = 0.99
 ERROR = 0
 
+
 class Scope(object):
     """
     Class to translate from Tetration nameing conventions to ACI
 
-    TODO 
-          THIS LOGIC NEEDS BE PROVIDED VIA ARGUMENTS TO THE MODULE !!!!!!!!! 
+    TODO
+          THIS LOGIC NEEDS BE PROVIDED VIA ARGUMENTS TO THE MODULE !!!!!!!!!
     TODO
     """
     def __init__(self):
         """
-        """
-                                                           # Look for these keywords in the policy JSON
-        self.POLICY_KEYWORDS = POLICY_KEYWORDS
+        """                                          
+        self.POLICY_KEYWORDS = POLICY_KEYWORDS             # Look for these keywords in the policy JSON
 
         self.DEFAULT = "Default"                           # You can map "Default" and "Default: Tetration"
         self.EXTERNAL = "EPG-WWT-EXT"                      # to an EPG called "EPG-WWT-EXT" for now.
@@ -197,13 +197,11 @@ class ProtocolMap(object):
         return self.protocols.get(protocol_number)
 
 
-def create_filter_list(adm_data):
+def create_list_of_policies(adm_data):
     """
-    Create list of filters
-    """
-    pmap = ProtocolMap()
-    filter_list = []
-    """
+    Create list of policies from the application dependencey mapping output
+    We are decoding a data structure which looks like the following
+
       "default_policies": [
     {
       "consumer_filter_id": "5c758c18497d4f160dbdb9ff",
@@ -224,8 +222,10 @@ def create_filter_list(adm_data):
       "priority": 100
     },
     """
+    pmap = ProtocolMap()
+    filters = []
     #
-    # The JSON file can have multiple keywords to specify user defined vs Tetration generated policy. 
+    # The JSON file can have multiple keywords to specify user defined vs Tetration generated policy.
     #
     policies = []
     for keyword in Scope().POLICY_KEYWORDS:
@@ -236,14 +236,18 @@ def create_filter_list(adm_data):
     #  Decode the policies
     #
     for policy in policies:
-        consumer_filter_name = policy.get('consumer_filter_name')
-        provider_filter_name = policy.get('provider_filter_name')
-        action = policy.get('action')
-        priority = policy.get('priority')
 
-        for filter in policy.get("l4_params"):
-            proto = pmap.get_keyword(filter.get('proto'))
-            confidence = filter.get('confidence', HIGH)
+        fields = dict(consumer_filter_name=policy.get('consumer_filter_name'),
+                      consumer_epg=Scope().to_aci(policy.get('consumer_filter_name')),
+                      provider_filter_name=policy.get('provider_filter_name'),
+                      provider_epg=Scope().to_aci(policy.get('provider_filter_name')),
+                      action=policy.get('action'),
+                      priority=policy.get('priority'),
+                      ether_type=ProtocolMap.ETHER_TYPE)
+
+        for filter in policy.get('l4_params'):
+            fields['proto'] = pmap.get_keyword(filter.get('proto'))
+            fields['confidence'] = filter.get('confidence', HIGH)
 
             if filter.get('port'):
                 ports = []
@@ -253,54 +257,12 @@ def create_filter_list(adm_data):
             else:
                 ports = {'to': ProtocolMap.UNSPECIFIED, 'from': ProtocolMap.UNSPECIFIED}
 
-            # contract_name = "{}_from_{}".format(Scope().to_aci(consumer_filter_name),
-            #                                  Scope().to_aci(provider_filter_name))
-            # contract_subject_name = "SUBJ-{}".format(contract_name)
+            fields['ports'] = ports
 
-            result = '{},{},{},{},{},{},{},{},{},{},{}\n'.format(
-                               consumer_filter_name,
-                               Scope().to_aci(consumer_filter_name),
-                               provider_filter_name,
-                               Scope().to_aci(provider_filter_name),
-                               action,
-                               priority,
-                               ProtocolMap.ETHER_TYPE,
-                               proto,
-                               ports['to'],
-                               ports['from'],
-                               confidence
-                               # contract_name,
-                               # contract_subject_name
-                               )
+            filters.append(fields)
 
-            filter_list.append(result)
+    return filters
 
-    return filter_list
-
-def get_header():
-    """
-    Header string for CSV file generation
-    """
-    HEADER = '{},{},{},{},{},{},{},{},{},{},{}\n'.format(
-                   'consumer_filter_name',
-                   'consumer_epg',
-                   'provider_filter_name',
-                   'provider_epg',
-                   'action',
-                   'priority',
-                   'ether_type',
-                   'proto',
-                   'ports_to',
-                   'ports_from',
-                   'confidence'
-                   # 'contract_name',
-                   # 'contract_subject_name'
-                   )
-    return HEADER
-
-    #
-    #
-    #        
 
 def debug(msg):
     """
@@ -312,15 +274,16 @@ def debug(msg):
     if DEBUG:
         print ": {}".format(msg)
 
+
 def get_applications(restclient, params):
     """
      >>> rc.json()[0]
-      {u'enforcement_enabled': True, u'description': u'Hunting Security Demo', u'author': u'Ben Dover', u'created_at': 1498856236, 
-      u'alternate_query_mode': False, u'primary': True, u'enforced_version': 12, u'latest_adm_version': 10, 
+      {u'enforcement_enabled': True, u'description': u'Hunting Security Demo', u'author': u'Ben Dover', u'created_at': 1498856236,
+      u'alternate_query_mode': False, u'primary': True, u'enforced_version': 12, u'latest_adm_version': 10,
       u'app_scope_id': u'5956bb09755f024a96136967', u'id': u'5956bb2c497d4f486384828b', u'name': u'Hunting'}
 
       return '0' for failures along with a message
-      return ip and dictionary of the 
+      return ip and dictionary of the
     """
     available_applications = []
     rc = restclient.get('/applications/')
@@ -332,9 +295,10 @@ def get_applications(restclient, params):
             if application.get('name') == params.get('application'):
                 return application.get('id'), application
 
-        return ERROR, 'not found, available applications: ' + ','.join(available_applications) 
+        return ERROR, 'not found, available applications: ' + ','.join(available_applications)
     else:
         return ERROR, 'error getting applications, status_code: {}'.format(rc.status_code)
+
 
 def get_application_details(restclient, application_id, version):
     """
@@ -345,8 +309,8 @@ def get_application_details(restclient, application_id, version):
         rc = restclient.get('/applications/5c9d827a497d4f0f7efd2cd9/details?version=v34')
 
         >>> rc.json().viewkeys()
-        dict_keys([u'inventory_filters', u'enforcement_enabled', u'absolute_policies', u'description', u'author', 
-        u'created_at', u'alternate_query_mode', u'primary', u'enforced_version', u'catch_all_action', 
+        dict_keys([u'inventory_filters', u'enforcement_enabled', u'absolute_policies', u'description', u'author',
+        u'created_at', u'alternate_query_mode', u'primary', u'enforced_version', u'catch_all_action',
         u'latest_adm_version', u'default_policies', u'vrf', u'version', u'clusters', u'app_scope_id', u'id', u'name'])
 
     """
@@ -357,27 +321,6 @@ def get_application_details(restclient, application_id, version):
     else:
         return ERROR, 'error getting application details, status_code: {}'.format(rc.status_code)
 
-def write_csv_file(filename, adm_data):
-    """
-    Write the policies to a CSV file for processing.
-    """
-    
-    if adm_data:
-        try:
-            f = open(filename, 'w')
-        except IOError as e:
-            return ERROR, e
-
-        f.write(get_header())
-        rows_written = 1
-
-        for filter in create_filter_list(adm_data):
-            f.write(filter)
-            rows_written += 1
-        f.close()
-        return rows_written, "wrote: {} lines to: {}".format(rows_written, filename) 
-    else:
-        return ERROR, "No data available for processing"
 
 def main():
     """
@@ -391,9 +334,7 @@ def main():
             api_key=dict(required=False),
             api_secret=dict(required=False),
             api_cfile=dict(required=False),
-            api_verify=dict(default=True, required=False, type='bool'),
-            csv_file=dict(required=False)
-        ),
+            api_verify=dict(default=True, required=False, type='bool')),
         supports_check_mode=False
     )
 
@@ -429,28 +370,18 @@ def main():
     # Use the API to download what the GUI provides in Applications -> Export -> Clusters and Policies
     #
     status, adm_data = get_application_details(restclient, application_id, module.params.get('version'))
-        
+
     if status == ERROR:
         module.fail_json(msg=adm_data)
 
     result = {'ansible_facts': {}}
     result['ansible_facts']['adm'] = adm_data
+    result['ansible_facts']['adm']['policy'] = create_list_of_policies(adm_data)
 
     #
-    # User may request we write a CSV file
+    # Return to the playbook
     #
-    changed = False
-    if module.params.get('csv_file'): 
-        status, message = write_csv_file(module.params.get('csv_file'), adm_data)
-        changed = True
-        if status == ERROR:
-            module.fail_json(msg=message)
-
-        result['ansible_facts']['csvfile'] = {'status': status, 'message': message, 'header': get_header()}
-    #
-    # Return to the playbook 
-    #
-    module.exit_json(changed=changed, **result)
+    module.exit_json(changed=False, **result)
 
 
 if __name__ == '__main__':
