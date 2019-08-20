@@ -81,7 +81,14 @@ author:
 
 EXAMPLES = '''
 
-    TODO
+    - name: Tetration Application
+      tetration_application:
+        application: 'PolicyPubApp'
+        version: latest
+        api_host: 'tetration.example.net'
+        api_cfile: '{{ playbook_dir }}/files/certificates/default/decrypted/api_credentials.json '
+        api_verify: False
+      register: api
 
 '''
 #
