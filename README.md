@@ -55,6 +55,7 @@ This solution has been verified and tested using Ansible 2.8.1 running with Ansi
 To aid in validating messages are being published, `library/kafka_debugger.py` has been developed. The program uses Python classes and methods from `library/tetration_network_policy.py` to attach to the Kafka broker address and report the beginning and ending offset counters, the available topic(s), and the message offset number and length of returned messages. Refer to the `CONFIGURATION_GUIDE.md`.
 
 ## Plugins
+### Lookup
 To extend the functionality of the Network Policy Publisher, included is an Ansible Lookup Plugin `tetration_scope`, which uses the Tetration REST API to return one or more Scopes (or AppScopes) to enrich data from the Network Policy Publisher.
 
 Refer to [Adding modules and plugins locally](https://docs.ansible.com/ansible/latest/dev_guide/developing_locally.html) to install `tetration_scope` on your local system. Once installed, review the documentation by referring to the documentation.
@@ -62,6 +63,9 @@ Refer to [Adding modules and plugins locally](https://docs.ansible.com/ansible/l
 ```bash
 $ ansible-doc -t lookup tetration_scope
 ```
+### Filter
+To map Tetration cluster and Scope names to the corresponding ACI End Point Groups, included is an Ansible Filter Plugin `aci_epg` which can be used to translate the names used in Tetration to ACI naming conventions.
+
 ## Ancillary Modules
 In addition to extracting policy from the Kafka broker, the Tetration API provides access to detailed application data relating to application dependency mapping.
 
