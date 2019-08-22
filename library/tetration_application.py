@@ -42,11 +42,6 @@ options:
         required: false
         default: 'latest'
 
-    csv_file:
-        description:
-            - If specified, the name of the file to write the policy returned in CSV format.
-        required: false
-
     api_host:
         description:
           - The hostname or IP address of the Tetration cluster
@@ -122,36 +117,6 @@ OK = (200,)
 POLICY_KEYWORDS = ('absolute_policies', 'default_policies')
 HIGH = 0.99
 ERROR = 0
-
-
-class Scope(object):
-    """
-    Class to translate from Tetration nameing conventions to ACI
-
-    TODO
-          THIS LOGIC NEEDS BE PROVIDED VIA ARGUMENTS TO THE MODULE !!!!!!!!!
-    TODO
-    """
-    def __init__(self):
-        """
-        """                                          
-        self.POLICY_KEYWORDS = POLICY_KEYWORDS             # Look for these keywords in the policy JSON
-
-        self.DEFAULT = "Default"                           # You can map "Default" and "Default: Tetration"
-        self.EXTERNAL = "EPG-WWT-EXT"                      # to an EPG called "EPG-WWT-EXT" for now.
-        self.KEY = "EPG-"                                  # If it starts with "EPG-", it's an endpoint group.
-        return
-
-    def to_aci(self, scope):
-        """
-            Map Tetration scopes to ACI EPGs
-        """
-        if self.KEY in scope:
-            return '{}{}'.format(self.KEY, scope.split(self.KEY)[1])
-
-        if self.DEFAULT in scope[0:len(self.DEFAULT)]:
-            return self.EXTERNAL
-        return
 
 
 class ProtocolMap(object):
@@ -235,7 +200,7 @@ def create_list_of_policies(adm_data):
     # The JSON file can have multiple keywords to specify user defined vs Tetration generated policy.
     #
     policies = []
-    for keyword in Scope().POLICY_KEYWORDS:
+    for keyword in POLICY_KEYWORDS:
         if adm_data.get(keyword):
             policies.extend(adm_data.get(keyword))
 
@@ -245,9 +210,7 @@ def create_list_of_policies(adm_data):
     for policy in policies:
 
         fields = dict(consumer_filter_name=policy.get('consumer_filter_name'),
-                      consumer_epg=Scope().to_aci(policy.get('consumer_filter_name')),
                       provider_filter_name=policy.get('provider_filter_name'),
-                      provider_epg=Scope().to_aci(policy.get('provider_filter_name')),
                       action=policy.get('action'),
                       priority=policy.get('priority'),
                       ether_type=ProtocolMap.ETHER_TYPE)
