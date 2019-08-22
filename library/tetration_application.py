@@ -381,7 +381,7 @@ def main():
     if status == ERROR:
         module.fail_json(msg=adm_data)
 
-    result = {'ansible_facts': {}}
+    result = {'ansible_facts': {'adm':{}}}
     result['ansible_facts']['adm']['raw'] = adm_data
     result['ansible_facts']['adm']['policy'] = create_list_of_policies(adm_data)
 
