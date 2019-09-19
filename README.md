@@ -106,5 +106,9 @@ The file `sensors.ini` is used to identify the target Tetration cluster and othe
 ## Google Protocol Buffers
 Tetration publishes policy to the Kafka message buffer encoded as protocol buffers. Protobufs provide better speed and efficiency for processing large amounts of data between publisher and subscriber. The source file `files/tetration_network_policy.proto` is the protobuf declaration of Tetration Network Policy's data structures published to Kafka. This file is compiled and imported by the module `tetration_network_policy.py`.
 
+## Getting help / involved
+
+If you have questions, concerns, bug reports, etc., please file an issue in this repository's [Issue Tracker](https://github.com/joelwking/ansible-tetration/issues).
+
 ## Author
 Joel W. King joel.king@wwt.com GitHub/GitLab: @joelwking Principal Architect at World Wide Technology
