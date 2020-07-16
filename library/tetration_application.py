@@ -228,6 +228,12 @@ def create_list_of_policies(adm_data):
                 ports = {'to': ProtocolMap.UNSPECIFIED, 'from': ProtocolMap.UNSPECIFIED}
 
             fields['ports'] = ports
+                                    # Formatted for Pensando app
+            if pmap.get_keyword(filter.get('proto')) in ('icmp',):
+                fields['proto-ports'] = dict(protocol=pmap.get_keyword(filter.get('proto')))  
+            else:
+                fields['proto-ports'] = dict(protocol=pmap.get_keyword(filter.get('proto')), 
+                                             ports='{}-{}'.format(ports['to'], ports['from']))
 
             filters.append(fields)
 
