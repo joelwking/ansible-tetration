@@ -201,39 +201,37 @@ def create_list_of_policies(adm_data):
     #
     policies = []
     for keyword in POLICY_KEYWORDS:
-        if adm_data.get(keyword):
-            policies.extend(adm_data.get(keyword))
+        policies.extend(adm_data.get(keyword, []))
 
     #
     #  Decode the policies
     #
     for policy in policies:
 
-        fields = dict(consumer_filter_name=policy.get('consumer_filter_name'),
-                      provider_filter_name=policy.get('provider_filter_name'),
-                      action=policy.get('action'),
-                      priority=policy.get('priority'),
-                      ether_type=ProtocolMap.ETHER_TYPE)
+        for l4 in policy.get('l4_params'):
+            fields = dict(consumer_filter_name=policy.get('consumer_filter_name'),
+                          provider_filter_name=policy.get('provider_filter_name'),
+                          action=policy.get('action'),
+                          priority=policy.get('priority'),
+                          ether_type=ProtocolMap.ETHER_TYPE,
+                          proto=pmap.get_keyword(l4.get('proto')),
+                          confidence=l4.get('confidence', HIGH))
 
-        for filter in policy.get('l4_params'):
-            fields['proto'] = pmap.get_keyword(filter.get('proto'))
-            fields['confidence'] = filter.get('confidence', HIGH)
-
-            if filter.get('port'):
-                ports = []
-                for port in filter.get('port'):
-                    ports.append(port)
-                ports = {'to': ports[1], 'from': ports[0]}
+            if l4.get('port'):
+                ports = {'from': l4.get('port')[0], 'to': l4.get('port')[1]}             # Note, this is a list, but I have never seen a length > 2
             else:
-                ports = {'to': ProtocolMap.UNSPECIFIED, 'from': ProtocolMap.UNSPECIFIED}
+                ports = {'from': ProtocolMap.UNSPECIFIED, 'to': ProtocolMap.UNSPECIFIED}
 
-            fields['ports'] = ports
-                                    # Formatted for Pensando app
-            if pmap.get_keyword(filter.get('proto')) in ('icmp',):
-                fields['proto-ports'] = dict(protocol=pmap.get_keyword(filter.get('proto')))  
+            fields['ports'] = ports                                                      # Legacy format
+                             
+            fields['proto-ports'] = dict(protocol=pmap.get_keyword(l4.get('proto')))     # Edits and formatting for Pensando
+            if ports['to'] == ports['from']:
+                fields['proto-ports']['ports'] = '{}'.format(ports['from'])              # Range not required
             else:
-                fields['proto-ports'] = dict(protocol=pmap.get_keyword(filter.get('proto')), 
-                                             ports='{}-{}'.format(ports['to'], ports['from']))
+                fields['proto-ports']['ports'] = '{}-{}'.format(ports['from'], ports['to'])
+
+            if fields['proto-ports']['protocol'] == 'icmp':
+                fields['proto-ports'].pop('ports')                                       # Can not specify ports for ICMP protocol
 
             filters.append(fields)
 
@@ -350,7 +348,7 @@ def main():
     if status == ERROR:
         module.fail_json(msg=adm_data)
 
-    result = {'ansible_facts': {'adm':{}}}
+    result = {'ansible_facts': {'adm': {}}}
     result['ansible_facts']['adm']['raw'] = adm_data
     result['ansible_facts']['adm']['policy'] = create_list_of_policies(adm_data)
 
